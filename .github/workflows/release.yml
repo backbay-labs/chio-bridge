@@ -1,0 +1,80 @@
+name: release
+
+# SLSA L3 + Sigstore provenance + reproducible build for @chio/bridge.
+#
+# Triggered only by semver tag pushes (v1.2.3). Out-of-scope in Wave 5.5:
+# tagging / pushing tags themselves.
+#
+# Secrets referenced:
+#   NPM_TOKEN  — npm publish auth (skip if using npm Trusted Publishers).
+#
+# Placeholders:
+#   owner/chio-ci-actions — swap to your GH org before pushing.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Fake tag for dry-run (e.g. v0.0.0-dev)"
+        required: false
+        default: "v0.0.0-dev"
+      dry-run:
+        description: "If 'true', build + pack but do not publish."
+        required: false
+        default: "true"
+
+permissions:
+  contents: read
+  id-token: write       # npm --provenance + SLSA generator
+  attestations: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      artifact-name: ${{ steps.hash.outputs.artifact-name }}
+      hashes: ${{ steps.hash.outputs.hashes }}
+    steps:
+      - name: Checkout (fetch tags for SOURCE_DATE_EPOCH)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build + pack + publish
+        id: publish
+        # Placeholder: swap `owner/chio-ci-actions` to your GH org.
+        uses: owner/chio-ci-actions/publish-chio@v0.1.0
+        with:
+          artifact-type: npm
+          package-name: "@chio/bridge"
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
+          dry-run: ${{ github.event.inputs.dry-run || 'false' }}
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Compute subjects for SLSA generator
+        id: hash
+        run: |
+          set -euo pipefail
+          name="$(basename "${{ steps.publish.outputs.artifact-path }}")"
+          sha="${{ steps.publish.outputs.artifact-sha256 }}"
+          # Generic generator expects base64(<hex>  <name>\n...).
+          echo "hashes=$(printf '%s  %s\n' "$sha" "$name" | base64 -w0)" >> "$GITHUB_OUTPUT"
+          echo "artifact-name=$name" >> "$GITHUB_OUTPUT"
+
+  provenance:
+    needs: [build]
+    # SLSA L3 requires the generator to run as a top-level reusable workflow.
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: ${{ needs.build.outputs.hashes }}
+      upload-assets: true
+      provenance-name: "${{ needs.build.outputs.artifact-name }}.intoto.jsonl"

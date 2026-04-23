@@ -1,0 +1,56 @@
+{
+  "name": "@chio/bridge",
+  "version": "0.2.2",
+  "description": "Shared integration library for chio plugins that wrap the chio protocol",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "import": "./dist/errors.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    },
+    "./doctor": {
+      "types": "./dist/doctor/index.d.ts",
+      "import": "./dist/doctor/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "chio-doctor": "./dist/doctor/bin.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --experimental-strip-types --test ./test/*.test.ts",
+    "test:live": "npm run build && node --experimental-strip-types --test ./test/live/*.test.ts",
+    "prepack": "node ./scripts/prep-publish.mjs && npm run build",
+    "postpack": "node ./scripts/restore-publish.mjs"
+  },
+  "dependencies": {
+    "@chio-protocol/sdk": "file:../arc/packages/sdk/chio-ts",
+    "yaml": "^2.5.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.7.0"
+  },
+  "license": "Apache-2.0"
+}

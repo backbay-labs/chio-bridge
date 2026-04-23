@@ -1,0 +1,39 @@
+hushspec: "0.1.0"
+name: tiny-hedge
+description: Minimal chio-bridge fixture — parseable by chio HushSpec schema.
+
+rules:
+  forbidden_paths:
+    enabled: true
+    patterns:
+      - "**/.env"
+      - "**/.git/**"
+  path_allowlist:
+    enabled: true
+    read:
+      - "/workspace/**"
+    write:
+      - "/workspace/**"
+  egress:
+    enabled: true
+    default: block
+    allow:
+      - "https://api.example.com/*"
+  tool_access:
+    enabled: true
+    default: block
+    allow:
+      - read_file
+      - list_directory
+  secret_patterns:
+    enabled: true
+
+extensions:
+  chio:
+    velocity:
+      per_minute: 30
+      per_hour: 200
+    human_in_loop:
+      require_for:
+        - run_command
+        - edit_file

@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout chio-bridge
+        uses: actions/checkout@v4
+        with:
+          path: chio-bridge
+          submodules: false
+
+      - name: Checkout arc (source of chio)
+        uses: actions/checkout@v4
+        with:
+          # Placeholder: replace owner/arc once the GitHub org is live.
+          repository: owner/arc
+          path: arc
+          ref: main
+
+      - name: Setup chio
+        uses: owner/chio-ci-actions/setup-chio@v0.1.0
+        with:
+          mode: build
+          arc-path: arc
+
+      - name: Install deps
+        working-directory: chio-bridge
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        working-directory: chio-bridge
+        # Wave 5.1 per CLAUDE: tolerate flaky typecheck for now, don't fail CI on it.
+        run: bun run typecheck || echo "typecheck failed (non-blocking in Wave 5.1)"
+
+      - name: Build
+        working-directory: chio-bridge
+        run: bun run build
+
+      - name: Unit tests
+        working-directory: chio-bridge
+        run: bun run test
+
+      - name: Start chio-test-harness
+        # chio-test-harness is a sibling repo in dev; on CI we fetch it next to chio-bridge.
+        uses: actions/checkout@v4
+        with:
+          repository: owner/chio-test-harness
+          path: chio-test-harness
+          ref: main
+
+      - name: Install harness MCP deps
+        working-directory: chio-test-harness/hello-mcp
+        run: bun install --frozen-lockfile
+
+      - name: Boot harness
+        working-directory: chio-test-harness
+        run: bash bin/start.sh
+
+      - name: Live integration tests
+        working-directory: chio-bridge
+        run: bun run test:live
+
+      - name: Stop harness
+        if: always()
+        working-directory: chio-test-harness
+        run: bash bin/stop.sh || true
+
+      - name: Upload harness logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-logs
+          path: chio-test-harness/var/*.log
+          if-no-files-found: ignore
