@@ -44,7 +44,7 @@
     "postpack": "node ./scripts/restore-publish.mjs"
   },
   "dependencies": {
-    "@chio-protocol/sdk": "file:../arc/packages/sdk/chio-ts",
+    "@chio-protocol/sdk": "^0.1.0",
     "yaml": "^2.5.0",
     "zod": "^3.23.8"
   },
