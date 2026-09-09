@@ -540,6 +540,6 @@ export type { VerifyPassportInput } from "./passport.js";
 export { ChioClient, ChioSession, ReceiptQueryClient } from "@chio-protocol/sdk";
 export type { ChioReceipt, CapabilityToken } from "@chio-protocol/sdk/invariants";
 
-export { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome } from "./execution.js";
+export { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome, verifyReceivedOutcome } from "./execution.js";
 export { startGatewayHttp } from "./gateway-http.js";
 export type { McpExecutionOptions, ExecutionRequest, ExecutionOutcome, ReceiptBinding, DelegatedSessionBinding, SessionValidation, DeliveryAcknowledgement, AcknowledgementResult } from "./execution.js";

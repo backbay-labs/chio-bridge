@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { canonicalizeJson, sha256Hex, signUtf8MessageEd25519 } from "@chio-protocol/sdk/invariants";
-import { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome } from "../dist/index.js";
+import { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome, verifyReceivedOutcome } from "../dist/index.js";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const signer = publicKey.export({type:"spki",format:"der"}).subarray(-32).toString("hex");
@@ -184,4 +184,20 @@ test("kernel without delivery acknowledgement negotiation cannot receive effects
 test("missing post-dispatch delivery binding retains unknown and cannot acknowledge",async()=>{
   const wire=transport({tamper:value=>{delete value._meta.chioDelivery;return value;}});const client=createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
   const outcome=await client.execute(request);assert.equal(outcome.state,"unknown");assert.equal((await client.acknowledge(outcome)).acknowledged,false);assert.equal(wire.acknowledgements(),0);
+});
+
+test("host-received output bytes cannot be substituted under an authentic decision receipt",async()=>{
+  const wire=transport(); const client=createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
+  const outcome=await client.execute(request);
+  assert.equal(verifyReceivedOutcome(outcome,expected),true);
+  for(const changed of [
+    {...outcome,result:{text:"forged host result"}},
+    {...outcome,requestId:"stale-operation"},
+    {...outcome,evidence:"unverified" as const},
+    {...outcome,delivery:{...outcome.delivery!,resultHash:"00".repeat(32)}},
+    {...outcome,delivery:{...outcome.delivery!,receiptId:"different"}},
+  ]) assert.equal(verifyReceivedOutcome(changed,expected),false);
+  assert.equal(verifyReceivedOutcome(outcome,{...expected,requestId:"next-operation"}),false);
+  assert.equal(verifyReceivedOutcome(outcome,{...expected,trustedSigners:["00".repeat(32)]}),false);
+  assert.equal(wire.acknowledgements(),0);
 });

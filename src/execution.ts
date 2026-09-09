@@ -107,21 +107,32 @@ export function verifyBoundReceipt(input: unknown, expected: ReceiptBinding): in
   }
 }
 
+/** Verify bytes received by a host against the signed terminal result.
+ * The trusted gateway separately matches the exact delivery proof, including
+ * private approval metadata, before acknowledging it at the resource owner.
+ */
+export function verifyReceivedOutcome(outcome: ExecutionOutcome, expected: ReceiptBinding): boolean {
+  try {
+    const receipt = outcome.receipt; const delivery = outcome.delivery;
+    if (outcome.state !== "completed" || outcome.evidence !== "verified" || !receipt || !delivery || outcome.requestId !== expected.requestId
+      || !verifyBoundReceipt(receipt, expected)) return false;
+    const admission: any = (receipt.metadata as any)?.admission_operation;
+    return receipt.decision?.verdict === "allow" && admission?.schema === "chio.admission-receipt.v1"
+      && admission.request_id === expected.requestId && admission.projected_state === "completed"
+      && admission.projected_dispatch_state === "terminal" && typeof admission.tool_outcome_id === "string"
+      && outcome.result !== undefined && receipt.content_hash === sha256Hex(canonicalizeJson(outcome.result))
+      && delivery.schema === "chio.mcp.delivery-ack.v1" && delivery.requestId === expected.requestId && delivery.receiptId === receipt.id
+      && delivery.resultHash === receipt.content_hash && /^[a-f0-9]{64}$/.test(delivery.requestHash)
+      && typeof delivery.acknowledgement === "string" && /^[A-Za-z0-9_-]{43}$/.test(delivery.acknowledgement);
+  } catch { return false; }
+}
+
 /** Revalidate a cached result against the caller's original request before trusting it. */
 export function verifyCompletedOutcome(outcome: ExecutionOutcome, config: McpExecutionOptions, request: ExecutionRequest): boolean {
   try {
-    const receipt = outcome.receipt; const delivery = outcome.delivery;
-    if (outcome.state !== "completed" || !receipt || !delivery || outcome.requestId !== request.requestId
-      || !verifyBoundReceipt(receipt,{...config,tool:request.tool,parameters:request.arguments,requestId:request.requestId})) return false;
-    const admission: any = (receipt.metadata as any)?.admission_operation;
     const params = {name:request.tool,arguments:request.arguments,_meta:{chioRequestId:request.requestId,...request.approval}};
-    return receipt.decision?.verdict === "allow" && admission?.schema === "chio.admission-receipt.v1"
-      && admission.request_id === request.requestId && admission.projected_state === "completed"
-      && admission.projected_dispatch_state === "terminal" && typeof admission.tool_outcome_id === "string"
-      && outcome.result !== undefined && receipt.content_hash === sha256Hex(canonicalizeJson(outcome.result))
-      && delivery.schema === "chio.mcp.delivery-ack.v1" && delivery.requestId === request.requestId && delivery.receiptId === receipt.id
-      && delivery.resultHash === receipt.content_hash && delivery.requestHash === sha256Hex(canonicalizeJson({method:"tools/call",params}))
-      && typeof delivery.acknowledgement === "string" && /^[A-Za-z0-9_-]{43}$/.test(delivery.acknowledgement);
+    return verifyReceivedOutcome(outcome, {...config,tool:request.tool,parameters:request.arguments,requestId:request.requestId})
+      && outcome.delivery!.requestHash === sha256Hex(canonicalizeJson({method:"tools/call",params}));
   } catch { return false; }
 }
 
