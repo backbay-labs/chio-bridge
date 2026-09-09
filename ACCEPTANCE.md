@@ -228,3 +228,9 @@ retained completion without acknowledging or dispatching anything. After reading
 that outcome, `delivery-acknowledge CONFIG RECEIVED_OUTCOME_FILE` acknowledges its
 delivery and performs no resource call. An unknown or unverified operation cannot
 be recovered this way and remains fenced.
+
+The first host-delivery artifact `ed680ff9d987` failed real Codex and Claude
+initialization: its experimental capability value was a string. The
+[MCP schema](https://modelcontextprotocol.io/specification/2025-11-25/schema#servercapabilities)
+requires an object. The corrected candidate advertises `{version: "1"}`.
+No protected effect occurred in those failed host runs.

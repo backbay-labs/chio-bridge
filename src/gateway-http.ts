@@ -52,7 +52,7 @@ export async function startGatewayHttp(config: GatewayConfig) {
       initialized=true;
       response.setHeader("Mcp-Session-Id",session);
       const offered=message.params?.protocolVersion;
-      reply({protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(offered)?offered:"2025-11-25",capabilities:{tools:{},experimental:{chioDeliveryAcknowledgement:"1"}},serverInfo:{name:"chio-protected-gateway",version:"0.3.0"}});return;
+      reply({protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(offered)?offered:"2025-11-25",capabilities:{tools:{},experimental:{chioDeliveryAcknowledgement:{version:"1"}}},serverInfo:{name:"chio-protected-gateway",version:"0.3.0"}});return;
     }
     if(!initialized||request.headers["mcp-session-id"]!==session){json(response,403,{error:"exact transport session required"});return;}
     if(notification){

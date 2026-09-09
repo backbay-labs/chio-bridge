@@ -31,7 +31,9 @@ async function fixture(){
 }
 async function client(transport:{url:string;token:string}){
  let session="";const request=async(message:any,token=transport.token)=>fetch(transport.url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`,...(session?{"Mcp-Session-Id":session}:{})},body:JSON.stringify(message)});
- const response=await request({jsonrpc:"2.0",id:0,method:"initialize",params:{protocolVersion:"2025-11-25"}});assert.equal(response.status,200);session=response.headers.get("mcp-session-id")!;assert.ok(session);await response.json();
+ const response=await request({jsonrpc:"2.0",id:0,method:"initialize",params:{protocolVersion:"2025-11-25"}});assert.equal(response.status,200);session=response.headers.get("mcp-session-id")!;assert.ok(session);const initialized=await response.json();
+ // MCP experimental capability values are objects. Stock Codex and Claude reject strings.
+ for(const capability of Object.values(initialized.result.capabilities.experimental??{}))assert.ok(capability!==null&&typeof capability==="object"&&!Array.isArray(capability));
  return{request,async call(id:number,content:string){const response=await (await request({jsonrpc:"2.0",id,method:"tools/call",params:{name:"write_file",arguments:{path:"allowed.txt",content}}})).json();
  const outcome=JSON.parse(response.result.content[0].text);
  if(outcome.state==="completed"){
