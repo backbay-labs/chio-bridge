@@ -1,0 +1,520 @@
+[
+  {
+    "name": "discovery",
+    "passed": true,
+    "inventory": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "tools": [
+          {
+            "name": "read_text_file",
+            "description": "Read Text File\n\nRead the complete contents of a file from the file system as text. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Operates on the file as text regardless of extension. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "head": {
+                  "description": "If provided, returns only the first N lines of the file",
+                  "type": "number"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "tail": {
+                  "description": "If provided, returns only the last N lines of the file",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write File\n\nCreate a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning. Handles text content with proper encoding. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "edit_file",
+            "description": "Edit File\n\nMake line-based edits to a text file. Each edit replaces exact line sequences with new content. Returns a git-style diff showing the changes made. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "dryRun": {
+                  "default": false,
+                  "description": "Preview changes using git-style diff format",
+                  "type": "boolean"
+                },
+                "edits": {
+                  "items": {
+                    "properties": {
+                      "newText": {
+                        "description": "Text to replace with",
+                        "type": "string"
+                      },
+                      "oldText": {
+                        "description": "Text to search for - must match exactly",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "oldText",
+                      "newText"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "edits"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "list_directory",
+            "description": "List Directory\n\nGet a detailed listing of all files and directories in a specified path. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is essential for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "write",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "isError": false,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"completed\",\"evidence\":\"verified\",\"requestId\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1\",\"receipt\":{\"action\":{\"parameter_hash\":\"6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8\",\"parameters\":{\"content\":\"actual ordinary effect\\n\",\"path\":\"/workspace/bridge-ordinary.txt\"}},\"boundary_class\":\"prevent\",\"capability_id\":\"cap-01a08775-2b85-7160-8937-c36197c7a216\",\"content_hash\":\"05ada6f1da461f49109a576ce0d8692eede932997d1a400bd6c84850ff95617c\",\"decision\":{\"verdict\":\"allow\"},\"id\":\"1aa1466e78af65a64d8fcd0f89539cc1f1188aca68a97914c338f9722d8f25ca\",\"kernel_key\":\"03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2\",\"metadata\":{\"admission_operation\":{\"compensation_status\":\"not_compensated\",\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"operation_id\":\"565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707\",\"projected_dispatch_state\":\"terminal\",\"projected_operation_version\":8,\"projected_state\":\"completed\",\"request_binding_hash\":\"f45b508304d452c17b26f61207006723fa953740e76b20eecee9387425bc6c62\",\"request_id\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1\",\"request_namespace_digest\":\"d0c3e6eb821d5054ff950f7b53e7b231bad612619fd24a8fbcca1c6e88eeff2c\",\"retained_dispatch_commit\":{\"committed_version\":6,\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"provider_attempt\":{\"attempt_id\":\"attempt:565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707\",\"operation_id\":\"565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707\",\"transport_id\":\"kernel-tool-server:fs\",\"transport_key_epoch\":1},\"store_fence\":{\"lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"owner_epoch\":1,\"store_uuid\":\"01a08774-2a1b-78a3-bbac-f2f9d94b83f1\"}},\"schema\":\"chio.admission-receipt.v1\",\"store_fence\":{\"lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"owner_epoch\":1,\"store_uuid\":\"01a08774-2a1b-78a3-bbac-f2f9d94b83f1\"},\"tool_outcome_id\":\"635f9698f95826d21ac9f8faffcf14777c90f71fc79ce20fd094aba3a43857b3\",\"tool_outcome_version\":2,\"trusted_time_unix_ms\":1788978998830},\"attribution\":{\"delegation_depth\":0,\"grant_index\":0,\"issuer_key\":\"a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1\",\"subject_key\":\"68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9\"},\"chio_receipt_signing_nonce\":\"rcpt-01a08775-2ead-7522-a931-c575f634eaad\",\"receipt_context\":{\"request_id\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1\"}},\"policy_hash\":\"057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e\",\"receipt_kind\":\"mediated_decision\",\"redaction_mode\":\"none\",\"signature\":\"8e623abf27304bf131700762039a54903a8ca7e11385b3f0aeed10bd6a129054e0d56e1187295b867f308dd6bd8fd853573302ae7770072ced42b2e108fa0301\",\"timestamp\":1788978998,\"tool_name\":\"write_file\",\"tool_origin\":\"caller_executed\",\"tool_server\":\"fs\",\"trust_level\":\"mediated\"},\"result\":{\"content\":[{\"text\":\"Successfully wrote to /workspace/bridge-ordinary.txt\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"content\":\"Successfully wrote to /workspace/bridge-ordinary.txt\"}},\"delivery\":{\"acknowledgement\":\"h7sYE4-Xc4lFRhb9ydVCNav2bb1FaNZd1wxOigcYnjg\",\"receiptId\":\"1aa1466e78af65a64d8fcd0f89539cc1f1188aca68a97914c338f9722d8f25ca\",\"requestHash\":\"8be1e6ebfc5a7b84498cf269f6e08dfbddc79d9e26e4bd11227cc52f9719c823\",\"requestId\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1\",\"resultHash\":\"05ada6f1da461f49109a576ce0d8692eede932997d1a400bd6c84850ff95617c\",\"schema\":\"chio.mcp.delivery-ack.v1\"}}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "completed",
+      "evidence": "verified",
+      "requestId": "e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1",
+      "receipt": {
+        "action": {
+          "parameter_hash": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "parameters": {
+            "content": "actual ordinary effect\n",
+            "path": "/workspace/bridge-ordinary.txt"
+          }
+        },
+        "boundary_class": "prevent",
+        "capability_id": "cap-01a08775-2b85-7160-8937-c36197c7a216",
+        "content_hash": "05ada6f1da461f49109a576ce0d8692eede932997d1a400bd6c84850ff95617c",
+        "decision": {
+          "verdict": "allow"
+        },
+        "id": "1aa1466e78af65a64d8fcd0f89539cc1f1188aca68a97914c338f9722d8f25ca",
+        "kernel_key": "03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2",
+        "metadata": {
+          "admission_operation": {
+            "compensation_status": "not_compensated",
+            "coordinator_lease_epoch": 1,
+            "coordinator_lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+            "operation_id": "565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707",
+            "projected_dispatch_state": "terminal",
+            "projected_operation_version": 8,
+            "projected_state": "completed",
+            "request_binding_hash": "f45b508304d452c17b26f61207006723fa953740e76b20eecee9387425bc6c62",
+            "request_id": "e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1",
+            "request_namespace_digest": "d0c3e6eb821d5054ff950f7b53e7b231bad612619fd24a8fbcca1c6e88eeff2c",
+            "retained_dispatch_commit": {
+              "committed_version": 6,
+              "coordinator_lease_epoch": 1,
+              "coordinator_lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+              "provider_attempt": {
+                "attempt_id": "attempt:565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707",
+                "operation_id": "565db27a932352e47f528ed8b0faf214f9ac8ecd037410ef35a22729e250a707",
+                "transport_id": "kernel-tool-server:fs",
+                "transport_key_epoch": 1
+              },
+              "store_fence": {
+                "lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+                "owner_epoch": 1,
+                "store_uuid": "01a08774-2a1b-78a3-bbac-f2f9d94b83f1"
+              }
+            },
+            "schema": "chio.admission-receipt.v1",
+            "store_fence": {
+              "lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+              "owner_epoch": 1,
+              "store_uuid": "01a08774-2a1b-78a3-bbac-f2f9d94b83f1"
+            },
+            "tool_outcome_id": "635f9698f95826d21ac9f8faffcf14777c90f71fc79ce20fd094aba3a43857b3",
+            "tool_outcome_version": 2,
+            "trusted_time_unix_ms": 1788978998830
+          },
+          "attribution": {
+            "delegation_depth": 0,
+            "grant_index": 0,
+            "issuer_key": "a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1",
+            "subject_key": "68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9"
+          },
+          "chio_receipt_signing_nonce": "rcpt-01a08775-2ead-7522-a931-c575f634eaad",
+          "receipt_context": {
+            "request_id": "e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1"
+          }
+        },
+        "policy_hash": "057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e",
+        "receipt_kind": "mediated_decision",
+        "redaction_mode": "none",
+        "signature": "8e623abf27304bf131700762039a54903a8ca7e11385b3f0aeed10bd6a129054e0d56e1187295b867f308dd6bd8fd853573302ae7770072ced42b2e108fa0301",
+        "timestamp": 1788978998,
+        "tool_name": "write_file",
+        "tool_origin": "caller_executed",
+        "tool_server": "fs",
+        "trust_level": "mediated"
+      },
+      "result": {
+        "content": [
+          {
+            "text": "Successfully wrote to /workspace/bridge-ordinary.txt",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "content": "Successfully wrote to /workspace/bridge-ordinary.txt"
+        }
+      },
+      "delivery": {
+        "acknowledgement": "h7sYE4-Xc4lFRhb9ydVCNav2bb1FaNZd1wxOigcYnjg",
+        "receiptId": "1aa1466e78af65a64d8fcd0f89539cc1f1188aca68a97914c338f9722d8f25ca",
+        "requestHash": "8be1e6ebfc5a7b84498cf269f6e08dfbddc79d9e26e4bd11227cc52f9719c823",
+        "requestId": "e78cc47c-ee45-423f-824a-96c35c2a4991:5a5b15b6226d488e0f0f537271bdafebcd46e235833e3c26ed5f61acf51600e1",
+        "resultHash": "05ada6f1da461f49109a576ce0d8692eede932997d1a400bd6c84850ff95617c",
+        "schema": "chio.mcp.delivery-ack.v1"
+      }
+    },
+    "resource": {
+      "files": {
+        "bridge-ordinary.txt": "actual ordinary effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:36:38.866Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "frameSha256": "1bad5e3ff0c74770584f2ff515931c7ef13366dbc05355474c70b7a62a104b9e"
+        }
+      ]
+    }
+  },
+  {
+    "name": "read-after-acknowledgement",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "isError": false,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"completed\",\"evidence\":\"verified\",\"requestId\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89\",\"receipt\":{\"action\":{\"parameter_hash\":\"0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0\",\"parameters\":{\"path\":\"/workspace/bridge-ordinary.txt\"}},\"boundary_class\":\"prevent\",\"capability_id\":\"cap-01a08775-2b85-7160-8937-c36197c7a216\",\"content_hash\":\"21d312d6b6cfff4dd173ff1458771e1a8794bc30a4e0e392cb66f826f399b4f4\",\"decision\":{\"verdict\":\"allow\"},\"id\":\"653866fb43ae47c239927c142aad0d8d9fd9b2ba7a916b7cf1a9b932c0c1c251\",\"kernel_key\":\"03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2\",\"metadata\":{\"admission_operation\":{\"compensation_status\":\"not_compensated\",\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"operation_id\":\"a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c\",\"projected_dispatch_state\":\"terminal\",\"projected_operation_version\":8,\"projected_state\":\"completed\",\"request_binding_hash\":\"bc6e30ebaec677ba31d17e72a7c402bec33f9da6495e8e7b4be9132c065cb545\",\"request_id\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89\",\"request_namespace_digest\":\"d0c3e6eb821d5054ff950f7b53e7b231bad612619fd24a8fbcca1c6e88eeff2c\",\"retained_dispatch_commit\":{\"committed_version\":6,\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"provider_attempt\":{\"attempt_id\":\"attempt:a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c\",\"operation_id\":\"a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c\",\"transport_id\":\"kernel-tool-server:fs\",\"transport_key_epoch\":1},\"store_fence\":{\"lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"owner_epoch\":1,\"store_uuid\":\"01a08774-2a1b-78a3-bbac-f2f9d94b83f1\"}},\"schema\":\"chio.admission-receipt.v1\",\"store_fence\":{\"lease_id\":\"01a08774-2afb-74e1-b49f-751b0ba267e6\",\"owner_epoch\":1,\"store_uuid\":\"01a08774-2a1b-78a3-bbac-f2f9d94b83f1\"},\"tool_outcome_id\":\"f8f32243d8bf6a4a5958fb7047bab1bf106ecf5796631892a2bdb7c154438975\",\"tool_outcome_version\":2,\"trusted_time_unix_ms\":1788978999628},\"attribution\":{\"delegation_depth\":0,\"grant_index\":0,\"issuer_key\":\"a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1\",\"subject_key\":\"68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9\"},\"chio_receipt_signing_nonce\":\"rcpt-01a08775-31cf-7802-a337-bf1f21eb9b32\",\"receipt_context\":{\"request_id\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89\"}},\"policy_hash\":\"057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e\",\"receipt_kind\":\"mediated_decision\",\"redaction_mode\":\"none\",\"signature\":\"cec59346a6e6a3d394941c4c0684b658e238ef0d7ff3cbd4587ca02d1483f81c725ea6434685d37fdfdbc789aca8bcb83a861a3cf2899e7dedcdd70afb68a00f\",\"timestamp\":1788978999,\"tool_name\":\"read_text_file\",\"tool_origin\":\"caller_executed\",\"tool_server\":\"fs\",\"trust_level\":\"mediated\"},\"result\":{\"content\":[{\"text\":\"actual ordinary effect\\n\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"content\":\"actual ordinary effect\\n\"}},\"delivery\":{\"acknowledgement\":\"vyOMcFkMOVhc_oWFTFRfPUCuvB9ovHiMNysvYinRFl8\",\"receiptId\":\"653866fb43ae47c239927c142aad0d8d9fd9b2ba7a916b7cf1a9b932c0c1c251\",\"requestHash\":\"0d9e4516a6ba321bae10d32e7e464666003ecbf61058d00988a806426078cd72\",\"requestId\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89\",\"resultHash\":\"21d312d6b6cfff4dd173ff1458771e1a8794bc30a4e0e392cb66f826f399b4f4\",\"schema\":\"chio.mcp.delivery-ack.v1\"}}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "completed",
+      "evidence": "verified",
+      "requestId": "e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89",
+      "receipt": {
+        "action": {
+          "parameter_hash": "0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0",
+          "parameters": {
+            "path": "/workspace/bridge-ordinary.txt"
+          }
+        },
+        "boundary_class": "prevent",
+        "capability_id": "cap-01a08775-2b85-7160-8937-c36197c7a216",
+        "content_hash": "21d312d6b6cfff4dd173ff1458771e1a8794bc30a4e0e392cb66f826f399b4f4",
+        "decision": {
+          "verdict": "allow"
+        },
+        "id": "653866fb43ae47c239927c142aad0d8d9fd9b2ba7a916b7cf1a9b932c0c1c251",
+        "kernel_key": "03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2",
+        "metadata": {
+          "admission_operation": {
+            "compensation_status": "not_compensated",
+            "coordinator_lease_epoch": 1,
+            "coordinator_lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+            "operation_id": "a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c",
+            "projected_dispatch_state": "terminal",
+            "projected_operation_version": 8,
+            "projected_state": "completed",
+            "request_binding_hash": "bc6e30ebaec677ba31d17e72a7c402bec33f9da6495e8e7b4be9132c065cb545",
+            "request_id": "e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89",
+            "request_namespace_digest": "d0c3e6eb821d5054ff950f7b53e7b231bad612619fd24a8fbcca1c6e88eeff2c",
+            "retained_dispatch_commit": {
+              "committed_version": 6,
+              "coordinator_lease_epoch": 1,
+              "coordinator_lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+              "provider_attempt": {
+                "attempt_id": "attempt:a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c",
+                "operation_id": "a6628ebf021cb232084d1579bcb7cdc80b06e67328bbe1bce61e51ba4ff1372c",
+                "transport_id": "kernel-tool-server:fs",
+                "transport_key_epoch": 1
+              },
+              "store_fence": {
+                "lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+                "owner_epoch": 1,
+                "store_uuid": "01a08774-2a1b-78a3-bbac-f2f9d94b83f1"
+              }
+            },
+            "schema": "chio.admission-receipt.v1",
+            "store_fence": {
+              "lease_id": "01a08774-2afb-74e1-b49f-751b0ba267e6",
+              "owner_epoch": 1,
+              "store_uuid": "01a08774-2a1b-78a3-bbac-f2f9d94b83f1"
+            },
+            "tool_outcome_id": "f8f32243d8bf6a4a5958fb7047bab1bf106ecf5796631892a2bdb7c154438975",
+            "tool_outcome_version": 2,
+            "trusted_time_unix_ms": 1788978999628
+          },
+          "attribution": {
+            "delegation_depth": 0,
+            "grant_index": 0,
+            "issuer_key": "a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1",
+            "subject_key": "68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9"
+          },
+          "chio_receipt_signing_nonce": "rcpt-01a08775-31cf-7802-a337-bf1f21eb9b32",
+          "receipt_context": {
+            "request_id": "e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89"
+          }
+        },
+        "policy_hash": "057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e",
+        "receipt_kind": "mediated_decision",
+        "redaction_mode": "none",
+        "signature": "cec59346a6e6a3d394941c4c0684b658e238ef0d7ff3cbd4587ca02d1483f81c725ea6434685d37fdfdbc789aca8bcb83a861a3cf2899e7dedcdd70afb68a00f",
+        "timestamp": 1788978999,
+        "tool_name": "read_text_file",
+        "tool_origin": "caller_executed",
+        "tool_server": "fs",
+        "trust_level": "mediated"
+      },
+      "result": {
+        "content": [
+          {
+            "text": "actual ordinary effect\n",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "content": "actual ordinary effect\n"
+        }
+      },
+      "delivery": {
+        "acknowledgement": "vyOMcFkMOVhc_oWFTFRfPUCuvB9ovHiMNysvYinRFl8",
+        "receiptId": "653866fb43ae47c239927c142aad0d8d9fd9b2ba7a916b7cf1a9b932c0c1c251",
+        "requestHash": "0d9e4516a6ba321bae10d32e7e464666003ecbf61058d00988a806426078cd72",
+        "requestId": "e78cc47c-ee45-423f-824a-96c35c2a4991:e377570a4603daf270cb4e0e013da763270b1a5a95e7bde60251ca1e3e93bb89",
+        "resultHash": "21d312d6b6cfff4dd173ff1458771e1a8794bc30a4e0e392cb66f826f399b4f4",
+        "schema": "chio.mcp.delivery-ack.v1"
+      }
+    }
+  },
+  {
+    "name": "forbidden-read-no-dispatch",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"denied\",\"evidence\":\"verified\",\"requestId\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:f04157203b03ded9efe50ab9f0a06a9f5e973dc10ae43cbd53ec1719d71c99a7\",\"receipt\":{\"action\":{\"parameter_hash\":\"2c98b3df041868746630bda0015a842d0df6a47168a98943b2eb4911fbf67e8b\",\"parameters\":{\"path\":\"/workspace/secret.txt\"}},\"boundary_class\":\"prevent\",\"capability_id\":\"cap-01a08775-2b85-7160-8937-c36197c7a216\",\"content_hash\":\"74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b\",\"decision\":{\"guard\":\"kernel\",\"reason\":\"guard denied the request: guard \\\"guard-pipeline\\\" denied the request\",\"verdict\":\"deny\"},\"evidence\":[{\"details\":\"action=deny; reason=guard denied request\",\"guard_name\":\"forbidden-path\",\"verdict\":false}],\"id\":\"def979e6685d0311b61244cdbcddc9dad9994dd2520e6fce0dd2196f426901b6\",\"kernel_key\":\"03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2\",\"metadata\":{\"attribution\":{\"delegation_depth\":0,\"issuer_key\":\"a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1\",\"subject_key\":\"68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9\"},\"budget_authority\":{\"authority_profile\":\"authoritative_hold_event\",\"guarantee_level\":\"single_node_atomic\",\"metering_profile\":\"max_cost_preauthorize_then_reconcile_actual\"},\"chio_receipt_signing_nonce\":\"rcpt-01a08775-332e-7250-8560-c38db6e49d2e\",\"receipt_context\":{\"request_id\":\"e78cc47c-ee45-423f-824a-96c35c2a4991:f04157203b03ded9efe50ab9f0a06a9f5e973dc10ae43cbd53ec1719d71c99a7\"}},\"policy_hash\":\"057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e\",\"receipt_kind\":\"mediated_decision\",\"redaction_mode\":\"none\",\"signature\":\"f4b049a8d5643e9cb3ea8596222b176216f1ded6a0df16c89eaf15a9d2789309bfda573cd870a413498bd7450eec333625227438c9665ecce97a91c223d4c602\",\"timestamp\":1788979000,\"tool_name\":\"read_text_file\",\"tool_origin\":\"caller_executed\",\"tool_server\":\"fs\",\"trust_level\":\"mediated\"},\"reason\":\"guard denied the request: guard \\\"guard-pipeline\\\" denied the request\"}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "denied",
+      "evidence": "verified",
+      "requestId": "e78cc47c-ee45-423f-824a-96c35c2a4991:f04157203b03ded9efe50ab9f0a06a9f5e973dc10ae43cbd53ec1719d71c99a7",
+      "receipt": {
+        "action": {
+          "parameter_hash": "2c98b3df041868746630bda0015a842d0df6a47168a98943b2eb4911fbf67e8b",
+          "parameters": {
+            "path": "/workspace/secret.txt"
+          }
+        },
+        "boundary_class": "prevent",
+        "capability_id": "cap-01a08775-2b85-7160-8937-c36197c7a216",
+        "content_hash": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+        "decision": {
+          "guard": "kernel",
+          "reason": "guard denied the request: guard \"guard-pipeline\" denied the request",
+          "verdict": "deny"
+        },
+        "evidence": [
+          {
+            "details": "action=deny; reason=guard denied request",
+            "guard_name": "forbidden-path",
+            "verdict": false
+          }
+        ],
+        "id": "def979e6685d0311b61244cdbcddc9dad9994dd2520e6fce0dd2196f426901b6",
+        "kernel_key": "03bb53e34f6ea8e4b6d359f25084166c6a1119b988d1fdc80931f313548dc4e2",
+        "metadata": {
+          "attribution": {
+            "delegation_depth": 0,
+            "issuer_key": "a480c1e815c4dab86fa67acf71a955c5433b239c2adf4c0b14abeabaf65100a1",
+            "subject_key": "68ada05d8615cd45b30c0f019550f1f8746911853bc39e3c46a381d6dff1c3d9"
+          },
+          "budget_authority": {
+            "authority_profile": "authoritative_hold_event",
+            "guarantee_level": "single_node_atomic",
+            "metering_profile": "max_cost_preauthorize_then_reconcile_actual"
+          },
+          "chio_receipt_signing_nonce": "rcpt-01a08775-332e-7250-8560-c38db6e49d2e",
+          "receipt_context": {
+            "request_id": "e78cc47c-ee45-423f-824a-96c35c2a4991:f04157203b03ded9efe50ab9f0a06a9f5e973dc10ae43cbd53ec1719d71c99a7"
+          }
+        },
+        "policy_hash": "057b9a8160375e7d90841325639bdd66050a454f393dae23e8c813b8df74b84e",
+        "receipt_kind": "mediated_decision",
+        "redaction_mode": "none",
+        "signature": "f4b049a8d5643e9cb3ea8596222b176216f1ded6a0df16c89eaf15a9d2789309bfda573cd870a413498bd7450eec333625227438c9665ecce97a91c223d4c602",
+        "timestamp": 1788979000,
+        "tool_name": "read_text_file",
+        "tool_origin": "caller_executed",
+        "tool_server": "fs",
+        "trust_level": "mediated"
+      },
+      "reason": "guard denied the request: guard \"guard-pipeline\" denied the request"
+    },
+    "resource": {
+      "files": {
+        "bridge-ordinary.txt": "actual ordinary effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:36:38.866Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "frameSha256": "1bad5e3ff0c74770584f2ff515931c7ef13366dbc05355474c70b7a62a104b9e"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 2,
+          "observedAt": "2026-09-09T18:36:39.670Z",
+          "upstreamRequestId": 4,
+          "tool": "read_text_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0",
+          "frameSha256": "39be294628d3c83204582af17b3438773b068b17b581afa0b4192a5d0fed81a4"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unsupported-resource-route",
+    "passed": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "error": {
+        "code": -32601,
+        "message": "unsupported method"
+      }
+    }
+  },
+  {
+    "name": "closed-transport-no-effect",
+    "passed": true,
+    "resource": {
+      "files": {
+        "bridge-ordinary.txt": "actual ordinary effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:36:38.866Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "frameSha256": "1bad5e3ff0c74770584f2ff515931c7ef13366dbc05355474c70b7a62a104b9e"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 2,
+          "observedAt": "2026-09-09T18:36:39.670Z",
+          "upstreamRequestId": 4,
+          "tool": "read_text_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0",
+          "frameSha256": "39be294628d3c83204582af17b3438773b068b17b581afa0b4192a5d0fed81a4"
+        }
+      ]
+    }
+  }
+]

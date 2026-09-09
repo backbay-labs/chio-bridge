@@ -187,3 +187,18 @@ module startup and the normal npm bin link respond to initialize and tools/list
 without contacting a kernel. `--preserve-symlinks-main` is supported for the
 direct module path; combining it with the npm `.bin` symlink is unsupported
 because Node resolves package imports from `.bin`, and exits before dispatch.
+
+
+### Packaged acknowledgement transport qualification
+
+The `c77861d` bridge artifact SHA256
+`c22c8dd094e39249484b3f4631d9ee6728db76bfd9e6f1f767c22538ab18a0ff`
+was installed offline with an empty npm cache. That installed package, with no
+private sibling checkout, passed six ordinary and seven approval cases against
+the acknowledgement kernel `0e683f6f7cc8...` and audited filesystem image
+`188cb84d5d0b...`. Fresh resource volumes were used for both modes. The actual
+operator CLI submitted and decided exact approvals; independently observed
+resource dispatch remained absent while pending or rejected. Replay did not
+redispatch and closing the HTTP transport prevented later effects. Raw evidence
+and the executed runner are in `evidence/20260909/packed-ack-http`. No host
+acceptance or published delivery follows from this shared qualification.

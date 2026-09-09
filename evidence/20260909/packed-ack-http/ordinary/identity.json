@@ -1,0 +1,11 @@
+{
+  "claim": "shared bridge and kernel qualification only",
+  "kernelSha256": "0e683f6f7cc8f21816b10641e3c18fba2dd1445fbcd28752cd3260d8ac5edb5a",
+  "image": "sha256:188cb84d5d0bb4063d4ce5a3b9c3832445a5acda5604911cda80a9136d1850a0",
+  "volume": "chio-required-bridge-packed-ordinary-20260909",
+  "auditVolume": "chio-required-bridge-packed-ordinary-20260909-audit",
+  "mode": "ordinary",
+  "packageDir": "/tmp/chio-bridge-ack-http-v2-cold-consumer-20260909/node_modules/@chio/bridge",
+  "configSha256": "a8e581078b6feab013f9c1ddea92266865f1875ecbca5a0dd66bcea67b6407ee",
+  "cases": 6
+}

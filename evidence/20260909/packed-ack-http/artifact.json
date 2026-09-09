@@ -1,0 +1,9 @@
+{
+  "bridgeSource": "c77861d",
+  "bridgeTarballSha256": "c22c8dd094e39249484b3f4631d9ee6728db76bfd9e6f1f767c22538ab18a0ff",
+  "sdkTarballSha256": "ea8639364db147ed0a9d590f58d532f93c84200a47c3245b1facdaf8f776eb90",
+  "ordinaryPassed": 6,
+  "approvalPassed": 7,
+  "skipped": 0,
+  "hostAcceptance": false
+}

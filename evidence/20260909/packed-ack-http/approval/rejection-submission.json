@@ -1,0 +1,37 @@
+{
+  "dispatchPerformedByThisEndpoint": false,
+  "record": {
+    "arguments": {
+      "content": "must not appear",
+      "path": "/workspace/bridge-rejected.txt"
+    },
+    "capability_id": "cap-01a08775-37ac-7951-ade4-202bd34906f1",
+    "created_at": 1788979003,
+    "expires_at": 1788979303,
+    "id": "approval-2e229876eb189c9b802a0f1928c065a77727c957ad0617c1864de44faadb40c6",
+    "intent": {
+      "body": {
+        "kind": "bound_tool_invocation",
+        "value": {
+          "capability_id": "cap-01a08775-37ac-7951-ade4-202bd34906f1",
+          "parameters_hash": "0x4e0abcf4f05cfb9b83080798411bcf3d156a2d114aa960e3e5316407953aa5e4"
+        }
+      },
+      "context": {
+        "capabilityId": "cap-01a08775-37ac-7951-ade4-202bd34906f1",
+        "mcpSessionId": "b617c53611ad9c6f65c33ed748f46adeae7d930072f6117bbb774934d6e993ba",
+        "policyFingerprint": "6d98fe0cb06235b4011724f892ea795fa9b3eaf7c9e83929df2e954d7530be24"
+      },
+      "id": "approval-2e229876eb189c9b802a0f1928c065a77727c957ad0617c1864de44faadb40c6",
+      "purpose": "Review exact qualification content",
+      "server_id": "fs",
+      "tool_name": "write_file"
+    },
+    "policy_fingerprint": "6d98fe0cb06235b4011724f892ea795fa9b3eaf7c9e83929df2e954d7530be24",
+    "request_id": "4572a4d8-904e-4da6-9385-8731950f1af5:611cefb93dcfab2a57bfefa71f466d3e9a5d3b9e7dd3c5973b84006d9ad304ce",
+    "schema": "chio.mcp.operator-approval.v1",
+    "session_id": "b617c53611ad9c6f65c33ed748f46adeae7d930072f6117bbb774934d6e993ba",
+    "subject": "1fc2add792ba4d71362b5b9827959b80c15b6e28675dfe91af46226ef30d6992"
+  },
+  "status": "pending"
+}
