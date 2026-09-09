@@ -133,12 +133,13 @@ export function createMcpExecutionClient(options: McpExecutionOptions) {
       const handshake = session.handshake?.initializeResponse.messages.find(message => "result" in message) as { result?: { capabilities?: { experimental?: Record<string, unknown> } } } | undefined;
       const feature = handshake?.result?.capabilities?.experimental?.["io.chio/execution-evidence"] as { version?: unknown } | undefined;
       if (!config.sessionId && feature?.version !== "1") return failure("kernel does not advertise execution-evidence v1; upgrade required before dispatch");
-      const context = await session.requestResult<{ schema?: unknown; evidenceVersion?: unknown; subjectKey?: unknown; capabilityIds?: unknown }>("chio/execution-context");
-      const authority = ("result" in context ? context.result : undefined) as { schema?: unknown; evidenceVersion?: unknown; subjectKey?: unknown; capabilityIds?: unknown } | undefined;
+      const context = await session.requestResult<{ schema?: unknown; evidenceVersion?: unknown; subjectKey?: unknown; capabilityIds?: unknown; serverId?: unknown }>("chio/execution-context");
+      const authority = ("result" in context ? context.result : undefined) as { schema?: unknown; evidenceVersion?: unknown; subjectKey?: unknown; capabilityIds?: unknown; serverId?: unknown } | undefined;
       if (authority?.schema !== "chio.mcp.execution-context.v1"
         || authority.evidenceVersion !== "1" || authority.subjectKey !== config.subjectKey
+        || authority.serverId !== config.serverId
         || !Array.isArray(authority.capabilityIds) || !authority.capabilityIds.includes(config.capabilityId)) {
-        return failure("kernel session authority does not match operator-pinned caller and capability");
+        return failure("kernel session authority does not match operator-pinned caller, capability and resource owner");
       }
       if (combined.aborted) return failure("cancelled before dispatch");
       sent = true;

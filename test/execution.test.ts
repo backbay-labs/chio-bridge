@@ -31,7 +31,7 @@ function transport(options: {feature?: boolean; tamper?: (value:any)=>any; lost?
     const body = JSON.parse(String(init?.body));
     if (body.method === "initialize") return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{protocolVersion:"2025-11-25",capabilities:{experimental: options.feature === false ? {} : {"io.chio/execution-evidence":{version:"1"}}}}}),{headers:{"mcp-session-id":"edge-session","content-type":"application/json"}});
     if (body.method === "notifications/initialized") return new Response(null,{status:202});
-    if (body.method === "chio/execution-context") return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{schema:"chio.mcp.execution-context.v1",evidenceVersion:"1",subjectKey:config.subjectKey,capabilityIds:[config.capabilityId]}}),{headers:{"content-type":"application/json"}});
+    if (body.method === "chio/execution-context") return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{schema:"chio.mcp.execution-context.v1",evidenceVersion:"1",subjectKey:config.subjectKey,capabilityIds:[config.capabilityId],serverId:config.serverId}}),{headers:{"content-type":"application/json"}});
     assert.equal(body.method,"tools/call");
     assert.equal(body.params._meta.chioRequestId,request.requestId);
     effects++;
@@ -96,8 +96,8 @@ test("cancellation before dispatch produces no request",async()=>{
   assert.equal((await client.execute(request,{signal})).state,"not_dispatched"); assert.equal(wire.effects(),0);
 });
 
-test("wrong operator-pinned caller or capability is rejected before effects",async()=>{
-  for (const wrong of [{subjectKey:"cc".repeat(32)},{capabilityId:"wrong-capability"}]) {
+test("wrong operator-pinned caller, capability or resource owner is rejected before effects",async()=>{
+  for (const wrong of [{subjectKey:"cc".repeat(32)},{capabilityId:"wrong-capability"},{serverId:"wrong-resource-owner"}]) {
     const wire=transport();
     const client=createMcpExecutionClient({...config,...wrong,fetchImpl:wire.fetchImpl});
     assert.equal((await client.execute(request)).state,"not_dispatched");
