@@ -133,3 +133,32 @@ aggregate budget lineage. There is no permissive fallback.
 [![ci](https://github.com/owner/chio-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/owner/chio-bridge/actions/workflows/ci.yml)
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml). Runs lint/typecheck (non-blocking in Wave 5.1), unit tests, and a chio-backed smoke pass. Swap `owner/...` once the GitHub org is live.
+
+### Recover a completed owner result absent from the bridge cache
+
+An uncertain journal entry cannot be retried automatically. For the qualified
+local owner, the separately shipped `export-owner-outcome.py` reads one exact
+session/request row from the owner's SQLite database in read-only mode. It does
+not invoke a tool, acknowledge delivery, or establish trust in the exported bytes.
+Keep its new output private. Stop the host first and recover a dead gateway lock
+using `recover-lock` if necessary; an active gateway blocks import.
+
+```sh
+chio-gateway-operator owner-result-import /absolute/original/gateway.json /absolute/private/owner-result.json
+chio-gateway-operator delivery-export /absolute/original/gateway.json ORIGINAL_REQUEST_ID /absolute/private/received-result.json
+```
+
+Import verifies the owner's signature, original caller/session/capability,
+resource, complete request, trusted receipt, result and acknowledgement proof.
+It preserves the earlier uncertain outcome and marks the recovered completion
+unacknowledged. It never dispatches or releases the fence. Read and verify the
+exported result and independent resource observation before explicitly running:
+
+```sh
+chio-gateway-operator delivery-acknowledge /absolute/original/gateway.json /absolute/private/received-result.json
+```
+
+A missing, pending, unsigned, mismatched or ambiguous owner result remains
+unresolved. Import cannot extend or replace revoked/expired authority. A failed
+acknowledgement leaves the fence in place. This operator procedure is separate
+from host runtime delivery and uses the same existing kernel wire contract.

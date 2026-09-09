@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { createGateway, gatewayApprovalPath, gatewayBinding, operationKey, privatePath, readGatewayConfig, type GatewayConfig, type StoredOperation } from "./gateway.js";
 import { verifyCompletedOutcome } from "./execution.js";
 import { verifyApprovalToolCall } from "./approval.js";
+import { importOwnerOutcome } from "./owner-recovery.js";
 
 function syncDirectory(path: string) { const fd=openSync(path,"r");try{fsyncSync(fd);}finally{closeSync(fd);} }
 function privateJson(path: string): any { privatePath(path,false);if(lstatSync(path).size>1024*1024)throw new Error("oversized private file");return JSON.parse(readFileSync(path,"utf8")); }
@@ -53,10 +54,11 @@ function proposal(config:GatewayConfig,requestId:string) {
 }
 async function main() {
   const [action,configPath,...args]=process.argv.slice(2);
-  if(!configPath||resolve(configPath)!==configPath)throw new Error("usage: chio-gateway-operator status|recover-lock|delivery-export|delivery-acknowledge|approval-submit|approval-decide CONFIG [arguments]");
+  if(!configPath||resolve(configPath)!==configPath)throw new Error("usage: chio-gateway-operator status|recover-lock|owner-result-import|delivery-export|delivery-acknowledge|approval-submit|approval-decide CONFIG [arguments]");
   const config=readGatewayConfig(configPath);
   if(action==="status"&&args.length===0){process.stdout.write(JSON.stringify(gatewayStatus(config))+"\n");return;}
   if(action==="recover-lock"&&args.length===0){process.stdout.write(JSON.stringify(recoverGatewayLock(config))+"\n");return;}
+  if(action==="owner-result-import"&&args.length===1){process.stdout.write(JSON.stringify(importOwnerOutcome(config,privateJson(args[0]!)))+"\n");return;}
   if(action==="delivery-export"&&args.length===2){
     const [requestId,output]=args;checkBinding(config);
     const record=privateJson(join(config.journalDir,operationKey(requestId!)+".json")) as StoredOperation;
