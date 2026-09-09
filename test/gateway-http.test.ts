@@ -109,3 +109,19 @@ test("unconfirmed host delivery survives restart and only exact received proof p
   const completed=JSON.parse((await c.call(2,"explicit continuation after recovered delivery")).result.content[0].text);assert.equal(completed.state,"completed");assert.equal(f.effects(),2);
  }finally{await transport.close();await f.close();}
 });
+
+test("native history acknowledgement verifies received bytes and never dispatches",async()=>{
+ const f=await fixture();const transport=await startGatewayHttp(f.config);
+ try{
+  const c=await client(transport);
+  const frame=await (await c.request({jsonrpc:"2.0",id:1,method:"tools/call",params:{name:"write_file",arguments:{path:"allowed.txt",content:"native result"}}})).json();
+  const outcome=JSON.parse(frame.result.content[0].text);
+  for(const wrong of [{...outcome,result:{forged:true}},{...outcome,requestId:"other-host-operation"}]){
+   assert.equal((await transport.acknowledgeReceivedOutcome(wrong)).acknowledged,false);
+   assert.equal(f.effects(),1);
+  }
+  assert.equal((await transport.acknowledgeReceivedOutcome(outcome)).acknowledged,true);
+  assert.equal((await transport.acknowledgeReceivedOutcome(outcome)).acknowledged,true);
+  assert.equal(f.effects(),1);assert.equal(readFileSync(f.marker,"utf8"),"native result");
+ }finally{await transport.close();await f.close();}
+});
