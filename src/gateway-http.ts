@@ -71,7 +71,9 @@ export async function startGatewayHttp(config: GatewayConfig) {
     response.once("close",()=>{if(!response.writableEnded)controller.abort();});
     queued=queued.then(async()=>{
       if(closed){fail(-32603,"transport closed before dispatch");return;}
-      reply(gatewayToolResult(await gateway.call(message.id,message.params.name,args,controller.signal)));
+      // A new host transport may restart its numeric RPC counter. Namespace it
+      // without changing retained kernel authority or clearing journal fences.
+      reply(gatewayToolResult(await gateway.call(`${session}:${JSON.stringify(message.id)}`,message.params.name,args,controller.signal)));
     }).catch(()=>fail(-32603,"gateway failed; no automatic retry")).finally(()=>{active.delete(key);});
     await queued;
   }

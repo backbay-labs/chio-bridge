@@ -162,7 +162,7 @@ with an empty npm cache and `--offline --ignore-scripts`, then import and exerci
 its runtime. Package installation is a delivery check, not host acceptance.
 
 Local component validation on 2026-09-09: Node 25.5.0, npm 11.8.0, Darwin arm64;
-TypeScript typecheck and 115 component tests passed with zero skips. This includes
+TypeScript typecheck and 116 component tests passed with zero skips. This includes
 16 spawned-CLI preparation cases with independent HTTP request observations,
 queued cancellation before kernel contact, retained unknown outcomes after a
 signed replay denial, and completed invocations returning MCP tool errors.

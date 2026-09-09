@@ -54,3 +54,12 @@ test("killing launcher process removes transport even while a separate client re
   await assert.rejects(()=>c.call(2,"after launcher death"));assert.equal(f.effects(),1);assert.equal(readFileSync(f.marker,"utf8"),"before launcher death");
  }finally{child.kill("SIGKILL");await f.close();}
 });
+
+test("new transport can restart RPC counter after known completion without changing kernel authority",async()=>{
+ const f=await fixture();let transport=await startGatewayHttp(f.config);
+ try{
+  let c=await client(transport);const first=JSON.parse((await c.call(1,"first transport")).result.content[0].text);assert.equal(first.state,"completed");await transport.close();
+  transport=await startGatewayHttp(f.config);c=await client(transport);const second=JSON.parse((await c.call(1,"second transport")).result.content[0].text);assert.equal(second.state,"completed");
+  assert.notEqual(first.requestId,second.requestId);assert.equal(first.receipt.capability_id,second.receipt.capability_id);assert.equal(f.effects(),2);assert.equal(readFileSync(f.marker,"utf8"),"second transport");
+ }finally{await transport.close();await f.close();}
+});

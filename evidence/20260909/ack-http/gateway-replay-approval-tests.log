@@ -1,0 +1,24 @@
+✔ proposal performs no dispatch, explicit approved resume retains exact identity and saves completion before acknowledgement (121.882083ms)
+✔ changed arguments leaves the proposal undispatched and fenced (91.6305ms)
+✔ forged signature leaves the proposal undispatched and fenced (78.268875ms)
+✔ expired approval leaves the proposal undispatched and fenced (56.830208ms)
+✔ signed operator denial prevents dispatch and retains the terminal proposal identity (92.501959ms)
+✔ proposal survives restart and unknown approved execution never redispatches (114.764084ms)
+✔ operator recovery verifies dead process ownership and retains pending journal fences (259.754083ms)
+✔ before dispatch the durable pending fence exists; unknown result fences all later effects across restart (106.143208ms)
+✔ completed duplicate returns original result without redispatch; changed request conflicts (130.495708ms)
+✔ tampered acknowledged cache cannot claim a verified result after restart (100.861917ms)
+✔ unlisted tools, cancellation before admission and concurrent gateway owners cannot dispatch (38.743875ms)
+✔ post-delivery denial remains fenced rather than being treated as no effect (73.265125ms)
+✔ journal authority cannot change on restart (58.922042ms)
+✔ stdio cancellation received with a queued call prevents contact with the kernel (178.912625ms)
+✔ completed kernel invocation preserves an upstream MCP tool error (0.199875ms)
+✔ gateway CLI initializes through a symlinked parent with either Node entrypoint mode (260.348709ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1139.31925

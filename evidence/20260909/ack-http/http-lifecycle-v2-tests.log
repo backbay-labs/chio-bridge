@@ -1,0 +1,11 @@
+✔ HTTP guest transport exposes only bounded tools and closing it removes authority route (97.84ms)
+✔ killing launcher process removes transport even while a separate client remains alive (222.462125ms)
+✔ new transport can restart RPC counter after known completion without changing kernel authority (111.998209ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 635.504167
