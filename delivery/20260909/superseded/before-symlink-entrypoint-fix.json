@@ -39,18 +39,5 @@
     "command": "npm ci --ignore-scripts --offline --no-audit --no-fund",
     "result": "pass",
     "privateSibling": false
-  },
-  "status": "superseded",
-  "supersededReason": "Packaged gateway direct CLI silently returned without protocol output through a symlinked installation parent; prior consumer checks did not execute this entrypoint.",
-  "replacementCandidate": {
-    "sourceCommit": "f576e60",
-    "sha256": "4f78380c16416890c40edfdfaac20329414a0f6b3076dfe1834885528565c2d6",
-    "status": "intermediate; session credential contract pending",
-    "tests": {
-      "passed": 80,
-      "failed": 0,
-      "skipped": 0
-    },
-    "packagedCliEvidence": "gateway-symlink-after.json"
   }
 }
