@@ -5,12 +5,16 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { generateKeyPairSync } from "node:crypto";
+import { signedCompletion } from "./helpers/completed.ts";
 import { createGateway, gatewayToolResult, type GatewayConfig } from "../dist/gateway.js";
 
 function fixture() {
+  const keys=generateKeyPairSync("ed25519");const signer=keys.publicKey.export({type:"spki",format:"der"}).subarray(-32).toString("hex");const seed=keys.privateKey.export({type:"pkcs8",format:"der"}).subarray(-32).toString("hex");
   const directory=mkdtempSync(join(tmpdir(),"chio-gateway-"));
   const config: GatewayConfig={execution:{endpoint:"http://127.0.0.1:1/mcp",bearerToken:"test",trustedSigners:["aa".repeat(32)],subjectKey:"bb".repeat(32),capabilityId:"cap",serverId:"fs",sessionId:"kernel-session"},sessionId:"host-session",journalDir:directory,tools:[{name:"write_file",inputSchema:{type:"object"}}]};
-  return {directory,config,cleanup:()=>rmSync(directory,{recursive:true,force:true})};
+  config.execution.trustedSigners=[signer];
+  return {directory,config,seed,cleanup:()=>rmSync(directory,{recursive:true,force:true})};
 }
 
 test("before dispatch the durable pending fence exists; unknown result fences all later effects across restart",async()=>{
@@ -32,12 +36,22 @@ test("before dispatch the durable pending fence exists; unknown result fences al
 
 test("completed duplicate returns original result without redispatch; changed request conflicts",async()=>{
   const f=fixture();let effects=0;
-  const executor={async execute(request:any){effects++;return {state:"completed" as const,evidence:"verified" as const,requestId:request.requestId,result:{written:true}};}};
+  const executor={async execute(request:any){effects++;return signedCompletion(f.config.execution,request,f.seed);}};
   const first=createGateway(f.config,executor);const original=await first.call("id","write_file",{path:"one"});first.close();
   const second=createGateway(f.config,executor);
   assert.deepEqual(await second.call("id","write_file",{path:"one"}),original);
   assert.equal((await second.call("id","write_file",{path:"changed"})).state,"not_dispatched");
   assert.equal(effects,1);second.close();f.cleanup();
+});
+
+test("tampered acknowledged cache cannot claim a verified result after restart",async()=>{
+  const f=fixture();let effects=0;
+  const executor={async execute(request:any){effects++;return signedCompletion(f.config.execution,request,f.seed);}};
+  const first=createGateway(f.config,executor);await first.call(1,"write_file",{path:"one"});first.close();
+  const path=join(f.directory,readdirSync(f.directory).find(name=>name.endsWith(".json"))!);
+  const record=JSON.parse(readFileSync(path,"utf8"));record.outcome.result={written:"forged"};record.acknowledged=true;
+  writeFileSync(path,JSON.stringify(record),{mode:0o600});
+  assert.throws(()=>createGateway(f.config,executor),/cached completion/);assert.equal(effects,1);f.cleanup();
 });
 
 test("unlisted tools, cancellation before admission and concurrent gateway owners cannot dispatch",async()=>{

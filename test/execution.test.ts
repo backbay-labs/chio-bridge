@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
 import { canonicalizeJson, sha256Hex, signUtf8MessageEd25519 } from "@chio-protocol/sdk/invariants";
-import { createMcpExecutionClient, verifyBoundReceipt } from "../dist/index.js";
+import { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome } from "../dist/index.js";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const signer = publicKey.export({type:"spki",format:"der"}).subarray(-32).toString("hex");
@@ -10,7 +10,7 @@ const seed = privateKey.export({type:"pkcs8",format:"der"}).subarray(-32).toStri
 const args = { path: "allowed.txt" };
 const output = { text: "useful output" };
 const request = {tool: "read_file", arguments: args, requestId: "host-session:call-1"};
-const config = { endpoint:"http://127.0.0.1:1234/mcp", bearerToken:"isolated-token", trustedSigners:[signer], subjectKey:"ab".repeat(32), capabilityId:"cap-1", serverId:"workspace" };
+const config = { endpoint:"http://127.0.0.1:1234/mcp", bearerToken:"isolated-token", trustedSigners:[signer], subjectKey:"ab".repeat(32), capabilityId:"cap-1", serverId:"workspace", sessionId:"edge-session" };
 const expected = {...config, tool: request.tool, parameters:args, requestId:request.requestId};
 function receipt(overrides = {}) {
   const body = {
@@ -24,23 +24,34 @@ function receipt(overrides = {}) {
   const id = sha256Hex(canonicalizeJson(body));
   return {...body, id, signature:signUtf8MessageEd25519(canonicalizeJson({id,body}),seed).signature_hex};
 }
-function transport(options: {feature?: boolean; tamper?: (value:any)=>any; lost?:boolean}={}) {
-  let effects = 0;
+function transport(options: {feature?: boolean; tamper?: (value:any)=>any; lost?:boolean; contextTamper?: (value:any)=>any}={}) {
+  let effects = 0; let acknowledgements = 0;
   const fetchImpl: typeof fetch = async (_input, init) => {
     if (init?.method === "DELETE") return new Response(null,{status:204});
     const body = JSON.parse(String(init?.body));
     if (body.method === "initialize") return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{protocolVersion:"2025-11-25",capabilities:{experimental: options.feature === false ? {} : {"io.chio/execution-evidence":{version:"1"}}}}}),{headers:{"mcp-session-id":"edge-session","content-type":"application/json"}});
     if (body.method === "notifications/initialized") return new Response(null,{status:202});
-    if (body.method === "chio/execution-context") return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{schema:"chio.mcp.execution-context.v1",evidenceVersion:"1",subjectKey:config.subjectKey,capabilityIds:[config.capabilityId],serverId:config.serverId}}),{headers:{"content-type":"application/json"}});
+    if (body.method === "chio/execution-context") {
+      const now = Math.floor(Date.now() / 1000);
+      let context: any = {schema:"chio.mcp.execution-context.v1",evidenceVersion:options.feature === false ? "0" : "1",deliveryAcknowledgementVersion:"1",subjectKey:config.subjectKey,capabilityIds:[config.capabilityId],serverId:config.serverId,
+        sessionCredential: {schema:"chio.mcp.session-credential.v1",sessionId:config.sessionId,subjectKey:config.subjectKey,capabilityIds:[config.capabilityId],serverId:config.serverId,endpointPath:"/mcp",allowedTools:[request.tool],issuedAt:now,expiresAt:now+300}};
+      if (options.contextTamper) context = options.contextTamper(context);
+      return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:context}),{headers:{"content-type":"application/json"}});
+    }
+    if (body.method === "chio/acknowledge") {
+      acknowledgements++;
+      return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result:{schema:"chio.mcp.delivery-ack.v1",requestId:body.params.requestId,receiptId:body.params.receiptId,acknowledged:true}}),{headers:{"content-type":"application/json"}});
+    }
     assert.equal(body.method,"tools/call");
     assert.equal(body.params._meta.chioRequestId,request.requestId);
     effects++;
     if(options.lost) throw new Error("response lost after observed effect");
     let result = {_meta:{chioEvidence:{schema:"chio.mcp.execution-evidence.v1",requestId:request.requestId,receipt:receipt(),output,outputKind:"value",terminalState:"completed"}},content:[{type:"text",text:"untrusted rendering"}]};
+    (result._meta as any).chioDelivery = {schema:"chio.mcp.delivery-ack.v1",requestId:request.requestId,requestHash:sha256Hex(canonicalizeJson({method:"tools/call",params:body.params})),receiptId:result._meta.chioEvidence.receipt.id,resultHash:result._meta.chioEvidence.receipt.content_hash,acknowledgement:"a".repeat(43)};
     if(options.tamper) result=options.tamper(result);
     return new Response(JSON.stringify({jsonrpc:"2.0",id:body.id,result}),{headers:{"content-type":"application/json"}});
   };
-  return {fetchImpl,effects:()=>effects};
+  return {fetchImpl,effects:()=>effects,acknowledgements:()=>acknowledgements};
 }
 
 test("strict verification binds trusted signer, principal, capability, tool, arguments, and request ID",()=>{
@@ -131,4 +142,46 @@ test("durable retry denial cannot erase an original unknown external outcome", a
   assert.equal(outcome.receipt?.decision.verdict, "deny");
   assert.equal((await client.execute(request)).state, "unknown");
   assert.equal(wire.effects(), 1);
+});
+
+
+test("trusted launcher authenticates delegated scope before exposing a bearer to the host", async () => {
+  const wire = transport(); const client = createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
+  assert.equal((await client.validateSession({allowedTools:[request.tool]})).ok,true);
+  assert.equal((await client.validateSession({allowedTools:[request.tool,"write_file"]})).ok,false);
+  assert.equal(wire.effects(),0);
+});
+
+for (const [name, mutate] of [
+  ["bootstrap bearer without delegated context", (context:any) => { delete context.sessionCredential; return context; }],
+  ["foreign retained session", (context:any) => { context.sessionCredential.sessionId="other"; return context; }],
+  ["expired delegated credential", (context:any) => { context.sessionCredential.expiresAt=1; return context; }],
+  ["different allowed tool", (context:any) => { context.sessionCredential.allowedTools=["write_file"]; return context; }],
+] as const) test(`${name} cannot dispatch a protected call`, async () => {
+  const wire=transport({contextTamper:mutate}); const client=createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
+  assert.equal((await client.execute(request)).state,"not_dispatched"); assert.equal(wire.effects(),0);
+});
+
+test("missing retained session cannot cause automatic initialization", () => {
+  assert.throws(()=>createMcpExecutionClient({...config,sessionId:undefined}),/retained session/);
+});
+
+
+test("completed result requires explicit durable-owner acknowledgement and cached proof revalidation",async()=>{
+  const wire=transport();const client=createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
+  const outcome=await client.execute(request);assert.equal(outcome.state,"completed");assert.equal(wire.acknowledgements(),0);
+  assert.equal(verifyCompletedOutcome(outcome,config,request),true);
+  assert.equal(verifyCompletedOutcome(outcome,config,{...request,arguments:{path:"substituted"}}),false);
+  assert.equal((await client.acknowledge({...outcome,result:{forged:true}})).acknowledged,false);assert.equal(wire.acknowledgements(),0);
+  assert.equal((await client.acknowledge(outcome)).acknowledged,true);assert.equal(wire.acknowledgements(),1);assert.equal(wire.effects(),1);
+});
+
+test("kernel without delivery acknowledgement negotiation cannot receive effects",async()=>{
+  const wire=transport({contextTamper:value=>{delete value.deliveryAcknowledgementVersion;return value;}});
+  assert.equal((await createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl}).execute(request)).state,"not_dispatched");assert.equal(wire.effects(),0);
+});
+
+test("missing post-dispatch delivery binding retains unknown and cannot acknowledge",async()=>{
+  const wire=transport({tamper:value=>{delete value._meta.chioDelivery;return value;}});const client=createMcpExecutionClient({...config,fetchImpl:wire.fetchImpl});
+  const outcome=await client.execute(request);assert.equal(outcome.state,"unknown");assert.equal((await client.acknowledge(outcome)).acknowledged,false);assert.equal(wire.acknowledgements(),0);
 });

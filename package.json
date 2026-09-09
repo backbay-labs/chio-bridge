@@ -27,7 +27,8 @@
   "bin": {
     "chio-doctor": "./dist/doctor/bin.js",
     "chio-mcp-gateway": "./dist/gateway.js",
-    "chio-prepare-gateway": "./dist/prepare-gateway.js"
+    "chio-prepare-gateway": "./dist/prepare-gateway.js",
+    "chio-gateway-operator": "./dist/gateway-operator.js"
   },
   "files": [
     "dist",
