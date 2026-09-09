@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createGateway, gatewayToolResult, type GatewayConfig } from "../dist/gateway.js";
 
 function fixture() {
@@ -107,4 +109,30 @@ test("completed kernel invocation preserves an upstream MCP tool error", () => {
   assert.equal(rendered.isError, true);
   assert.deepEqual(JSON.parse(rendered.content[0]!.text), outcome);
   assert.equal(gatewayToolResult({ ...outcome, result: { isError: false, content: [] } }).isError, false);
+});
+
+test("gateway CLI initializes through a symlinked parent with either Node entrypoint mode", () => {
+  const f = fixture();
+  try {
+    const linkedPackage = join(f.directory, "linked-package");
+    symlinkSync(fileURLToPath(new URL("..", import.meta.url)), linkedPackage, "dir");
+    f.config.execution.endpoint = "http://127.0.0.1:1";
+    f.config.journalDir = join(f.directory, "journal");
+    const configPath = join(f.directory, "config.json");
+    writeFileSync(configPath, JSON.stringify(f.config), { mode: 0o600 });
+    const input = [
+      { jsonrpc: "2.0", id: 1, method: "initialize" },
+      { jsonrpc: "2.0", method: "notifications/initialized" },
+      { jsonrpc: "2.0", id: 2, method: "tools/list" },
+    ].map(message => JSON.stringify(message)).join("\n") + "\n";
+    for (const flags of [[], ["--preserve-symlinks-main"]]) {
+      const child = spawnSync(process.execPath, [...flags, join(linkedPackage, "dist/gateway.js"), configPath], { input, encoding: "utf8", timeout: 10000 });
+      assert.equal(child.error, undefined);
+      assert.equal(child.status, 0, child.stderr);
+      const responses = child.stdout.trim().split("\n").filter(Boolean).map(line => JSON.parse(line));
+      assert.equal(responses.length, 2, "CLI must respond instead of silently returning after a symlinked invocation");
+      assert.equal(responses[0].result.serverInfo.name, "chio-mcp-gateway");
+      assert.deepEqual(responses[1].result.tools, f.config.tools);
+    }
+  } finally { f.cleanup(); }
 });
