@@ -84,56 +84,11 @@ test("fromDaemon receipts() queries trust plane /v1/receipts/query", async () =>
   assert.equal(calls.length, 1);
 });
 
-test("fromDaemon attenuate runs issue-then-revoke against the real trust-plane routes", async () => {
-  // Wave 4 Gap 2 update: the arc trust plane on this build has NO
-  // `/v1/capabilities/<id>/attenuate` route (we grepped `arc/crates/
-  // chio-cli/src/trust_control/` for `attenuat`: only the
-  // validate_attenuation core type machinery exists, never bound to
-  // an HTTP handler). The bridge implements attenuation as a two-step
-  // `issue-narrower-then-revoke-old`, so this test now asserts both
-  // POSTs hit real, existing trust-plane routes.
-  const calls: FetchCall[] = [];
-  const fetchImpl = mockFetch((call) => {
-    if (/\/v1\/capabilities\/issue$/.test(call.url)) {
-      return new Response(
-        JSON.stringify({
-          id: "cap_43_narrow",
-          issuer: "i",
-          subject: "s",
-          scope: {},
-          issued_at: 1,
-          expires_at: 2,
-          signature: "",
-        }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    }
-    if (/\/v1\/revocations$/.test(call.url)) {
-      const body = JSON.parse(String(call.init?.body));
-      assert.equal(body.capabilityId, "cap_42");
-      return new Response(
-        JSON.stringify({ capabilityId: "cap_42", revoked: true, newlyRevoked: true }),
-        { status: 200, headers: { "content-type": "application/json" } },
-      );
-    }
-    return new Response("not found", { status: 404 });
-  }, calls);
-  const bridge = ChioBridge.fromDaemon({
-    trustUrl: "http://127.0.0.1:8940",
-    token: "t",
-    fetchImpl,
-  });
-  const t = await bridge.attenuate("cap_42", {
-    budget: { maxUsd: 5 },
-    subjectPublicKey:
-      "11112222333344445555666677778888999900001111222233334444555566ff",
-  });
-  // New token is the narrower issued capability, NOT the old id.
-  assert.equal(t.id, "cap_43_narrow");
-  // Both wire calls happened.
-  assert.equal(calls.length, 2);
-  assert.match(calls[0]!.url, /\/v1\/capabilities\/issue$/);
-  assert.match(calls[1]!.url, /\/v1\/revocations$/);
+test("attenuation refuses administrative reissuance without a parent-bound endpoint", async () => {
+  let calls = 0;
+  const bridge = ChioBridge.fromDaemon({ token: "t", fetchImpl: async () => { calls++; return new Response("{}"); } });
+  await assert.rejects(() => bridge.attenuate("parent", { budget: {maxUsd: 5} }), /parent-bound/);
+  assert.equal(calls, 0);
 });
 
 test("fromDaemon surfaces DaemonUnreachableError when fetch rejects", async () => {

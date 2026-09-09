@@ -1,0 +1,68 @@
+hushspec: "0.1.0"
+name: canonical-code-agent
+description: Supported starting point for coding-agent stacks in Chio.
+
+rules:
+  forbidden_paths:
+    enabled: true
+    patterns:
+      - "**/.env"
+      - "**/.env.*"
+      - "**/.git/**"
+      - "**/.ssh/**"
+  path_allowlist:
+    enabled: true
+    read:
+      - "/workspace/**"
+    write:
+      - "/workspace/**"
+    patch:
+      - "/workspace/**"
+  secret_patterns:
+    enabled: true
+  patch_integrity:
+    enabled: true
+  shell_commands:
+    enabled: true
+    forbidden_patterns:
+      - "(?i)rm\\s+-rf\\s+/"
+      - "(?i)git\\s+push\\s+.*--force(\\s|$)"
+      - "(?i)git\\s+push\\s+.*-f(\\s|$)"
+  tool_access:
+    enabled: true
+    default: block
+    allow:
+      - read_file
+      - list_directory
+      - search_files
+      - write_file
+      - edit_file
+      - create_directory
+      - run_command
+      - status
+      - diff
+      - log
+      - add
+      - commit
+
+  # velocity: first-class feature. Compiles to VelocityGuard +
+  # AgentVelocityGuard. Integer `max_spend_per_window` is minor units
+  # (e.g. cents). Uncomment to rate-limit invocations or spend.
+  # velocity:
+  #   enabled: true
+  #   max_invocations_per_window: 60
+  #   max_spend_per_window: 50000
+  #   window_secs: 60
+  #   burst_factor: 1.0
+
+  # human_in_loop: first-class feature. Compiles to
+  # Constraint::RequireApprovalAbove { threshold_units } on tool grants.
+  # `approve_above` is minor units (integer); tools matching a
+  # `require_confirmation` glob collapse to threshold 0 (approval always).
+  # human_in_loop:
+  #   enabled: true
+  #   require_confirmation: ["write_*", "run_command"]
+  #   approve_above: 15000
+  #   approve_above_currency: "USD"
+  #   timeout_seconds: 900
+  #   on_timeout: deny

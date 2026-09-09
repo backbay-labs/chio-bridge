@@ -26,6 +26,8 @@ function buildSignedReceipt(seedHex: string): ChioReceipt {
   const parameter_hash = sha256Hex(canonicalizeJson(parameters));
   const kernel_key = ed25519PublicHexFromSeed(seedHex);
   const body = {
+    receipt_kind: "mediated_decision", boundary_class: "prevent", trust_level: "mediated",
+    tool_origin: "caller_executed", redaction_mode: "none",
     id: "rcpt_" + sha256Hex("fixture").slice(0, 32),
     timestamp: 1_710_000_000,
     capability_id: "cap_test_001",
@@ -38,7 +40,9 @@ function buildSignedReceipt(seedHex: string): ChioReceipt {
     kernel_key,
     evidence: [{ guard_name: "PathAllowlistGuard", verdict: true }],
   };
-  const canonical = canonicalizeJson(body);
+  const { id: _id, ...idInput } = body;
+  body.id = sha256Hex(canonicalizeJson(idInput));
+  const canonical = canonicalizeJson({ id: body.id, body: idInput });
   const signed = signUtf8MessageEd25519(canonical, seedHex);
   return { ...body, signature: signed.signature_hex } as ChioReceipt;
 }

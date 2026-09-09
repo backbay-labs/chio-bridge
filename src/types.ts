@@ -219,21 +219,13 @@ export interface ToolCall {
   policyPath?: string;
 }
 
-/**
- * Optional options for `ChioBridge.check()`. Wave D Bug 2 fix: thread a
- * bonded capability id (and an optional per-call cost hint in USD) so
- * the bridge can invoke the trust-plane mediation endpoint
- * (`POST /v1/budgets/authorize-exposure`) and enforce a running
- * cumulative budget across checks. When `capabilityId` is set but
- * `costUsd` is omitted or zero, the bridge skips the mediation call
- * (there is no spend to charge) and returns the underlying CLI /
- * daemon verdict unchanged. When both are set, the mediation endpoint
- * atomically accumulates the capability's exposed spend; if the
- * accumulated total would exceed the capability's budget cap, the
- * bridge returns `{ decision: "cancelled", guard: "velocity", ... }`
- * without invoking the downstream tool.
+/** Options for side-effect-free CLI policy evaluation and optional budget admission.
+ * A check is not execution evidence and does not enforce a resource boundary.
+ * A failed/ambiguous budget admission denies; it is never retried automatically.
  */
 export interface CheckOptions {
+  /** Deadline for CLI evaluation and budget HTTP admission. Default 10000 ms. */
+  timeoutMs?: number;
   /** Capability id to thread through the mediation endpoint. When
    *  present, a non-zero costUsd triggers a budget-authorize-exposure
    *  POST against the trust plane. */

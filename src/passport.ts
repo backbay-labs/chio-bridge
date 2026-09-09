@@ -9,7 +9,6 @@ import { join } from "node:path";
 import type { ChioCli } from "./client/cli.js";
 import type { DaemonClient } from "./client/daemon.js";
 import { ChioBridgeError, NotInitializedError } from "./errors.js";
-import { checkCall } from "./check.js";
 import { isChioDid, type CreatePassportOptions, type Passport } from "./types.js";
 
 /**
@@ -95,30 +94,8 @@ export async function createPassport(
       receiptDbPath,
       subjectPublicKeyHex,
     );
-    // Fresh receipt-db guard: when the DB has NO receipts at all,
-    // resolveSubjectPublicKey falls through to `preferredHex` (our
-    // brand-new keypair). `chio passport create` will then reject with
-    // `no receipts found for subject <hex>`. This is the Gap 3
-    // signature surfaced by the OpenCode chio_init smoke — a bridge
-    // consumer without a pre-seeded receipt hits an opaque 422.
-    //
-    // Fix: if the daemon is reachable, bootstrap a seed receipt via an
-    // always-allowed `echo` check against the MCP edge. The edge
-    // stamps a receipt with the kernel-minted subject key; we re-run
-    // `resolveSubjectPublicKey` to pick that key up. This keeps the
-    // cold-boot bond path idempotent without requiring plugin authors
-    // to remember to call `check()` first.
-    if (subjectPublicKey === subjectPublicKeyHex && daemon) {
-      const seeded = await seedBootstrapReceipt(daemon, receiptDbPath);
-      if (seeded) {
-        subjectPublicKey = await resolveSubjectPublicKey(
-          cli,
-          receiptDbPath,
-          subjectPublicKeyHex,
-        );
-      }
-    }
-
+    // Passport creation does not execute a fixture tool to manufacture evidence.
+    // A fresh database must be populated by explicit, verified operator work.
     // Drive the real CLI flag surface documented by
     // `chio passport create --help`:
     //   --subject-public-key, --output, --signing-seed-file,
@@ -331,43 +308,6 @@ function deriveHarnessReceiptDb(): string | undefined {
   const harness = process.env.CHIO_HARNESS_DIR;
   if (!harness) return undefined;
   return join(harness, "var", "receipts.sqlite");
-}
-
-/**
- * Seeds a bootstrap receipt in the receipt DB for the cold-boot bond
- * path. Returns `true` when a receipt was (or might have been) written
- * and a rescan of the DB is warranted. On failure returns `false` so
- * the caller surfaces the original "no receipts found" error without
- * getting a confusing bootstrap-related stack.
- *
- * Uses `checkCall(daemon, undefined, {tool: "echo", params: {...}})`
- * which drives the MCP edge's `tools/call` path. The edge stamps a
- * receipt against whichever subject key the kernel mints for the
- * bearer token, which is exactly the key the subsequent
- * `resolveSubjectPublicKey` peek will recover.
- */
-async function seedBootstrapReceipt(
-  daemon: DaemonClient,
-  receiptDbPath: string,
-): Promise<boolean> {
-  // This tool is part of the chio-test-harness hello-mcp server and is
-  // always-allowed by canonical.yaml. Production consumers who use a
-  // different MCP fixture should pre-seed their receipt DB by running
-  // one allowed call before calling bond(); this bootstrap is a best
-  // effort for the common harness case.
-  void receiptDbPath; // receipt-db routing is handled by the edge config
-  try {
-    await checkCall(daemon, undefined, {
-      tool: "echo",
-      params: { msg: "chio-bridge:bond:bootstrap" },
-    });
-    return true;
-  } catch {
-    // Swallow: caller will surface the downstream "no receipts" error
-    // when the real `chio passport create` runs, giving a clear signal
-    // to the operator that a warmup is required.
-    return false;
-  }
 }
 
 async function writeFreshSigningSeed(seedPath: string): Promise<{
