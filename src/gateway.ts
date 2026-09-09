@@ -136,6 +136,15 @@ export function createGateway(config: GatewayConfig, executor: { execute(request
   }
   const resumeTool: Tool = {name:"chio_resume",description:"Explicitly resume one exact operator-approved proposal, retaining its original request identity. Never retries an unknown effect.",inputSchema:{type:"object",properties:{requestId:{type:"string"},tool:{type:"string"},arguments:{type:"object"}},required:["requestId","tool","arguments"],additionalProperties:false}};
   return {
+    /** Trusted launcher observed this exact result in native host history. */
+    async acknowledgeReceivedOutcome(input: unknown): Promise<AcknowledgementResult> {
+      try {
+        const outcome = input as ExecutionOutcome;
+        const record = records.get(outcome?.requestId);
+        if (!record?.request || !verifyCompletedOutcome(outcome,snapshot.execution,record.request)) throw new Error("host result differs from retained request or signed output");
+        return await this.acknowledgeDelivery(outcome.delivery);
+      } catch { return {acknowledged:false,reason:"host-received result is not the exact verified terminal outcome"}; }
+    },
     /** Proof of receiving the exact retained result. This never dispatches a tool. */
     async acknowledgeDelivery(proof: unknown): Promise<AcknowledgementResult> {
       try {

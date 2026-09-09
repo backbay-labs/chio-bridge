@@ -91,6 +91,8 @@ export async function startGatewayHttp(config: GatewayConfig) {
     url:`http://127.0.0.1:${port}/mcp`,port,token,
     /** Call only with proof received from the real host's completed tool result. */
     acknowledgeDelivery: gateway.acknowledgeDelivery,
+    /** Only call after observing the native host's tool result, before its next model turn. */
+    acknowledgeReceivedOutcome: gateway.acknowledgeReceivedOutcome.bind(gateway),
     async close(){
       if(closed)return;closed=true;for(const controller of active.values())controller.abort();
       server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));
