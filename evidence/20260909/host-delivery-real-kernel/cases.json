@@ -1,0 +1,154 @@
+[
+  {
+    "name": "response-lost-after-one-real-effect",
+    "passed": true,
+    "cutpoint": {
+      "requestId": "febf72c8-77c9-4978-9aeb-33c414134244:d94994343af9775dc7d7ab7c2f77e015fb49520138ed161a30a82dc51ef5c308",
+      "receiptId": "526502bf36588a9921fdef04c6ca930c5f3ea4992888f7acb5d5a6c0093a132f",
+      "discardedBytes": 4055
+    },
+    "resource": {
+      "files": {
+        "bridge-ordinary.txt": "actual ordinary effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "host-delivery.txt": "original retained effect",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T19:46:39.714Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "frameSha256": "1bad5e3ff0c74770584f2ff515931c7ef13366dbc05355474c70b7a62a104b9e"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 2,
+          "observedAt": "2026-09-09T19:46:40.668Z",
+          "upstreamRequestId": 4,
+          "tool": "read_text_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0",
+          "frameSha256": "39be294628d3c83204582af17b3438773b068b17b581afa0b4192a5d0fed81a4"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 3,
+          "observedAt": "2026-09-09T19:52:21.210Z",
+          "upstreamRequestId": 5,
+          "tool": "write_file",
+          "path": "/workspace/host-delivery.txt",
+          "argumentsSha256": "deb6c7f5077b5d9f5a8667bbf269492492185f681471b4619fe6a067c46fcd00",
+          "frameSha256": "34f5682d1d0dd4786b53ab1e151a5720323ba1618ef6a7e5296ab925c0e5430b"
+        }
+      ]
+    }
+  },
+  {
+    "name": "new-request-fenced-without-host-proof",
+    "passed": true
+  },
+  {
+    "name": "restart-preserves-last-hop-fence",
+    "passed": true
+  },
+  {
+    "name": "operator-export-has-no-effect-and-does-not-acknowledge",
+    "passed": true
+  },
+  {
+    "name": "forged-proof-refused-requestId",
+    "passed": true
+  },
+  {
+    "name": "forged-proof-refused-requestHash",
+    "passed": true
+  },
+  {
+    "name": "forged-proof-refused-receiptId",
+    "passed": true
+  },
+  {
+    "name": "forged-proof-refused-resultHash",
+    "passed": true
+  },
+  {
+    "name": "forged-proof-refused-acknowledgement",
+    "passed": true
+  },
+  {
+    "name": "explicit-operator-recovery-without-redispatch",
+    "passed": true,
+    "acknowledged": {
+      "acknowledged": true,
+      "requestId": "febf72c8-77c9-4978-9aeb-33c414134244:d94994343af9775dc7d7ab7c2f77e015fb49520138ed161a30a82dc51ef5c308",
+      "receiptId": "526502bf36588a9921fdef04c6ca930c5f3ea4992888f7acb5d5a6c0093a132f",
+      "protectedDispatch": false
+    }
+  },
+  {
+    "name": "new-useful-work-after-explicit-recovery",
+    "passed": true,
+    "resource": {
+      "files": {
+        "bridge-ordinary.txt": "actual ordinary effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "host-delivery.txt": "useful after explicit recovery",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T19:46:39.714Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "6ce044bb1c611550b9eae4e2cdbdd72b569756fbf92fffd7fb1d42409be9c4d8",
+          "frameSha256": "1bad5e3ff0c74770584f2ff515931c7ef13366dbc05355474c70b7a62a104b9e"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 2,
+          "observedAt": "2026-09-09T19:46:40.668Z",
+          "upstreamRequestId": 4,
+          "tool": "read_text_file",
+          "path": "/workspace/bridge-ordinary.txt",
+          "argumentsSha256": "0c0efe90b81961434f7ab986aec2a5f26985d8d850ef043ea6a78440839cbdb0",
+          "frameSha256": "39be294628d3c83204582af17b3438773b068b17b581afa0b4192a5d0fed81a4"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 3,
+          "observedAt": "2026-09-09T19:52:21.210Z",
+          "upstreamRequestId": 5,
+          "tool": "write_file",
+          "path": "/workspace/host-delivery.txt",
+          "argumentsSha256": "deb6c7f5077b5d9f5a8667bbf269492492185f681471b4619fe6a067c46fcd00",
+          "frameSha256": "34f5682d1d0dd4786b53ab1e151a5720323ba1618ef6a7e5296ab925c0e5430b"
+        },
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 4,
+          "observedAt": "2026-09-09T19:52:23.700Z",
+          "upstreamRequestId": 6,
+          "tool": "write_file",
+          "path": "/workspace/host-delivery.txt",
+          "argumentsSha256": "4a1f5b700536ca340ef776753047fdd7349544a965694a6eaae7e34aaad7623d",
+          "frameSha256": "9179e5364d198b68638b0ebcdff2f467fc8bf83fc7c35c63e20d3e648963ffbc"
+        }
+      ]
+    }
+  }
+]

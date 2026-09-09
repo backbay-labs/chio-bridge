@@ -234,3 +234,12 @@ initialization: its experimental capability value was a string. The
 [MCP schema](https://modelcontextprotocol.io/specification/2025-11-25/schema#servercapabilities)
 requires an object. The corrected candidate advertises `{version: "1"}`.
 No protected effect occurred in those failed host runs.
+
+The corrected `b7785282b4f4` artifact passed 11 real-kernel/resource checks
+using a proxy that consumes and discards the completed guest response. A new
+request and a restarted transport remained fenced. Five proof substitutions
+were refused. Exporting the verified result did not acknowledge or execute it;
+explicit operator acknowledgement allowed a new useful call without repeating
+the original effect. The independent audit contained exactly two writes.
+Evidence: `evidence/20260909/host-delivery-real-kernel`. This is shared boundary
+qualification; each host still needs its own delivery-loss run.
