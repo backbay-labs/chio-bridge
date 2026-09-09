@@ -30,6 +30,7 @@ No registry publication or supported production release is claimed.
    authority, budget, receipt, revocation and session stores. Expose a constrained
    resource server. Hosts must have no direct resource mount or Docker socket.
 3. Write a private (0600) operator request JSON with endpoint, bearerToken,
+   adminToken (distinct from bearerToken), credentialTtlSeconds (integer 1..3600),
    trustedSigners (operator-selected kernel public keys), serverId, journalDir,
    sessionId (logical host session), and allowedTools (explicit tool names).
    The endpoint is the origin, for example `http://127.0.0.1:8931`, without
@@ -37,8 +38,18 @@ No registry publication or supported production release is claimed.
    one capability containing the selected grants.
 4. Run `chio-prepare-gateway request.json /absolute/gateway-config.json`.
    It initializes the kernel session, reads its assigned authority and tool
-   inventory, and writes a private configuration. It executes no tool. Retain
-   this kernel session; creating a fresh one can change authority and budgets.
+   inventory, and exchanges the operator-only admin credential at
+   `POST /admin/sessions/{sessionId}/credential` for a session bearer restricted
+   by the kernel to that session, capability, server, selected tools and lifetime.
+   It checks the returned binding and confirms the delegated execution context
+   before writing a private configuration. Only the delegated bearer is stored;
+   the original bootstrap and admin credentials stay in the operator request,
+   outside the host's readable process boundary. The response is authenticated
+   transport, not a client-verified signature. Public scope and expiry metadata
+   are retained as `sessionCredential` for operator inspection. An absent or
+   incompatible credential endpoint fails preparation; there is no static-bearer
+   fallback. Preparation executes no tool. Retain this kernel session; creating
+   a fresh one can change authority and budgets.
 5. Configure the restricted host's sole MCP server as
    `chio-mcp-gateway /absolute/gateway-config.json`. Disable native, custom,
    background, delegation, resource/prompt and user-discovered tool routes in
@@ -64,6 +75,15 @@ Incompatible authority/configuration is refused. For removal stop the host and
 gateway, revoke/close the kernel session using the trusted operator control path,
 then remove the host MCP entry and package. Preserve audit records per operator
 retention policy. Do not delete another agent's normal profile or citizen state.
+
+The delegated credential expires no later than the requested TTL and the
+underlying capability expiry. There is no automatic credential renewal or
+session recreation. Stop admission before expiry and have the trusted operator
+reconcile outstanding work before issuing a new bounded credential. A delegated
+bearer cannot initialize another session or use administration, resources,
+prompts, unsolicited GET events, or tools outside its recorded allowlist.
+Keep the gateway and its journal in a process boundary the host cannot mutate;
+credential restrictions alone do not make a host-owned journal trustworthy.
 
 ## Remaining qualification
 
@@ -98,7 +118,15 @@ with an empty npm cache and `--offline --ignore-scripts`, then import and exerci
 its runtime. Package installation is a delivery check, not host acceptance.
 
 Local component validation on 2026-09-09: Node 25.5.0, npm 11.8.0, Darwin arm64;
-TypeScript typecheck and 79 component tests passed with zero skips. This includes
+TypeScript typecheck and 95 component tests passed with zero skips. This includes
+15 spawned-CLI preparation cases with independent HTTP request observations,
 queued cancellation before kernel contact, retained unknown outcomes after a
 signed replay denial, and completed invocations returning MCP tool errors.
 These results do not close any host's I01-I08 record.
+
+The packaged CLI is also exercised through an explicit symlinked installation
+parent using `node scripts/verify-packed-cli.mjs /absolute/bridge.tgz`. Direct
+module startup and the normal npm bin link respond to initialize and tools/list
+without contacting a kernel. `--preserve-symlinks-main` is supported for the
+direct module path; combining it with the npm `.bin` symlink is unsupported
+because Node resolves package imports from `.bin`, and exits before dispatch.
