@@ -26,6 +26,8 @@ export interface StoredOperation {
   requestId: string; digest: string; state: "pending" | GatewayOutcome["state"];
   outcome?: GatewayOutcome; proposal?: GatewayProposal; acknowledged?: boolean;
   request?: ExecutionRequest;
+  hostDeliveryConfirmed?: boolean;
+  hostDeliveryRequired?: boolean;
 }
 export function operationKey(requestId: string) { return createHash("sha256").update(requestId).digest("hex"); }
 export function gatewayApprovalPath(config: GatewayConfig, requestId: string) { return join(resolve(config.journalDir), "approvals", `${operationKey(requestId)}.json`); }
@@ -67,7 +69,7 @@ export function readGatewayConfig(path: string): GatewayConfig {
 /** The journal is a conservative dispatch interlock, not a second resource ledger.
  * It never resolves an unknown outcome or replays it under a fresh identity.
  */
-export function createGateway(config: GatewayConfig, executor: { execute(request: ExecutionRequest, control?: {signal?:AbortSignal}): Promise<ExecutionOutcome>; acknowledge?(outcome: ExecutionOutcome): Promise<AcknowledgementResult> } = createMcpExecutionClient(config.execution)) {
+export function createGateway(config: GatewayConfig, executor: { execute(request: ExecutionRequest, control?: {signal?:AbortSignal}): Promise<ExecutionOutcome>; acknowledge?(outcome: ExecutionOutcome): Promise<AcknowledgementResult> } = createMcpExecutionClient(config.execution), delivery: { requireHostAcknowledgement?: boolean } = {}) {
   const snapshot: GatewayConfig = JSON.parse(JSON.stringify(config));
   const directory = resolve(snapshot.journalDir);
   mkdirSync(directory, { recursive: true, mode: 0o700 }); privatePath(directory, true);
@@ -103,7 +105,7 @@ export function createGateway(config: GatewayConfig, executor: { execute(request
   }
   let closed = false; let busy = false;
   const tools = new Map(snapshot.tools.map(tool => [tool.name, tool]));
-  const fenced = () => [...records.values()].some(record => record.state !== "not_dispatched" && !(record.state === "completed" && record.acknowledged === true));
+  const fenced = () => [...records.values()].some(record => record.state !== "not_dispatched" && !(record.state === "completed" && record.acknowledged === true && (!delivery.requireHostAcknowledgement || record.hostDeliveryConfirmed === true)));
   function persist(record: StoredOperation) {
     const key = operationKey(record.requestId); const path = join(directory, `${key}.json`); const temp = join(directory, `${key}.${process.pid}.tmp`);
     const fd = openSync(temp, constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY, 0o600);
@@ -112,7 +114,7 @@ export function createGateway(config: GatewayConfig, executor: { execute(request
   }
   async function confirmDelivery(record: StoredOperation): Promise<GatewayOutcome> {
     const outcome = record.outcome!;
-    if (outcome.state === "completed" && !record.acknowledged && executor.acknowledge) {
+    if (outcome.state === "completed" && !record.acknowledged && executor.acknowledge && (!delivery.requireHostAcknowledgement || record.hostDeliveryConfirmed === true)) {
       const acknowledgement = await executor.acknowledge(outcome);
       if (acknowledgement.acknowledged) persist({...record,acknowledged:true});
     }
@@ -126,7 +128,7 @@ export function createGateway(config: GatewayConfig, executor: { execute(request
       if (outcome.state === "completed" && !verifyCompletedOutcome(outcome,snapshot.execution,request)) {
         outcome = {state:"unknown",evidence:"unverified",requestId:request.requestId,reason:"completed result failed durable request verification"};
       }
-      const completed = {...record,state:outcome.state,outcome,acknowledged:false,request};
+      const completed = {...record,state:outcome.state,outcome,acknowledged:false,hostDeliveryRequired:delivery.requireHostAcknowledgement===true,request};
       persist(completed); // The verified result is durable before the acknowledgement.
       return await confirmDelivery(completed);
     } catch { return {state:"unknown",evidence:"unverified",requestId:record.requestId,reason:"dispatch or persistence interrupted; no automatic retry"}; }
@@ -134,6 +136,22 @@ export function createGateway(config: GatewayConfig, executor: { execute(request
   }
   const resumeTool: Tool = {name:"chio_resume",description:"Explicitly resume one exact operator-approved proposal, retaining its original request identity. Never retries an unknown effect.",inputSchema:{type:"object",properties:{requestId:{type:"string"},tool:{type:"string"},arguments:{type:"object"}},required:["requestId","tool","arguments"],additionalProperties:false}};
   return {
+    /** Proof of receiving the exact retained result. This never dispatches a tool. */
+    async acknowledgeDelivery(proof: unknown): Promise<AcknowledgementResult> {
+      try {
+        const requestId = (proof as {requestId?: unknown})?.requestId;
+        if (closed || typeof requestId !== "string") throw new Error("invalid delivery proof");
+        const record = records.get(requestId);
+        if (!record || record.state !== "completed" || !record.request || record.outcome?.state !== "completed"
+          || !verifyCompletedOutcome(record.outcome,snapshot.execution,record.request)
+          || canonicalizeJson(proof) !== canonicalizeJson(record.outcome.delivery)) throw new Error("delivery proof does not match retained outcome");
+        const confirmed = {...record,hostDeliveryConfirmed:true};
+        persist(confirmed); // Receiving host proof is durable before kernel acknowledgement.
+        await confirmDelivery(confirmed);
+        if (!records.get(requestId)?.acknowledged) throw new Error("kernel acknowledgement not confirmed");
+        return {acknowledged:true,requestId,receiptId:record.outcome.receipt!.id};
+      } catch { return {acknowledged:false,reason:"host delivery proof or kernel acknowledgement is unresolved; preserve the operation"}; }
+    },
     listTools: () => snapshot.approval ? [...snapshot.tools,resumeTool] : snapshot.tools,
     async call(id: string | number, name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<GatewayOutcome> {
       const requestId = name === "chio_resume" ? String(args.requestId ?? "") : `${snapshot.sessionId}:${createHash("sha256").update(canonicalizeJson({ id })).digest("hex")}`;

@@ -202,3 +202,29 @@ resource dispatch remained absent while pending or rejected. Replay did not
 redispatch and closing the HTTP transport prevented later effects. Raw evidence
 and the executed runner are in `evidence/20260909/packed-ack-http`. No host
 acceptance or published delivery follows from this shared qualification.
+
+
+### Gateway-to-host delivery loss
+
+A further local HTTP/resource regression exposed a gap in `c77861d`: a proxy
+consumed the complete gateway response and closed the host connection. The
+gateway had already acknowledged the kernel; a replacement host request then
+executed. The failing regression is retained in `evidence/20260909/guest-delivery`.
+
+HTTP transport now defers kernel acknowledgement until the host supplies the
+exact returned delivery proof. `chio/acknowledge` and the trusted launcher's
+`acknowledgeDelivery` method validate that proof against the original verified
+durable result. Native launchers must confirm proof parsed from actual host tool
+results, never the response they merely sent to the host. A lost response, restart
+or substituted proof keeps subsequent requests fenced. Legacy completed journal
+entries without host-delivery confirmation also require explicit recovery.
+The first 118 component tests passed, including five forged proof fields and
+restart with an unconfirmed host delivery. Real kernel and per-host package
+reruns are still required. The prior packaged HTTP results do not close I07.
+
+For a dead launcher, recover its process lock with `recover-lock CONFIG`.
+`delivery-export CONFIG REQUEST_ID NEW_OUTPUT` verifies and exports an exact
+retained completion without acknowledging or dispatching anything. After reading
+that outcome, `delivery-acknowledge CONFIG RECEIVED_OUTCOME_FILE` acknowledges its
+delivery and performs no resource call. An unknown or unverified operation cannot
+be recovered this way and remains fenced.

@@ -12,7 +12,7 @@ export async function startGatewayHttp(config: GatewayConfig) {
   const executor = createMcpExecutionClient(config.execution);
   const validation = await executor.validateSession({allowedTools:config.tools.map(tool=>tool.name)});
   if (!validation.ok) throw new Error(validation.reason);
-  const gateway = createGateway(config,executor);
+  const gateway = createGateway(config,executor,{requireHostAcknowledgement:true});
   const token = randomBytes(32).toString("base64url");
   const session = randomBytes(32).toString("base64url");
   let initialized = false;
@@ -52,7 +52,7 @@ export async function startGatewayHttp(config: GatewayConfig) {
       initialized=true;
       response.setHeader("Mcp-Session-Id",session);
       const offered=message.params?.protocolVersion;
-      reply({protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(offered)?offered:"2025-11-25",capabilities:{tools:{}},serverInfo:{name:"chio-protected-gateway",version:"0.3.0"}});return;
+      reply({protocolVersion:["2024-11-05","2025-03-26","2025-06-18","2025-11-25"].includes(offered)?offered:"2025-11-25",capabilities:{tools:{},experimental:{chioDeliveryAcknowledgement:"1"}},serverInfo:{name:"chio-protected-gateway",version:"0.3.0"}});return;
     }
     if(!initialized||request.headers["mcp-session-id"]!==session){json(response,403,{error:"exact transport session required"});return;}
     if(notification){
@@ -61,6 +61,12 @@ export async function startGatewayHttp(config: GatewayConfig) {
       response.writeHead(202).end();return;
     }
     if(message.method==="ping"){reply({});return;}
+    if(message.method==="chio/acknowledge") {
+      const result=await gateway.acknowledgeDelivery(message.params);
+      if(result.acknowledged)reply({schema:"chio.mcp.delivery-ack.v1",...result});
+      else fail(-32603,result.reason);
+      return;
+    }
     if(message.method==="tools/list"){reply({tools:gateway.listTools()});return;}
     if(message.method!=="tools/call"){fail(-32601,"unsupported method");return;}
     const args=message.params?.arguments;
@@ -83,6 +89,8 @@ export async function startGatewayHttp(config: GatewayConfig) {
   }catch(error){gateway.close();throw error;}
   return {
     url:`http://127.0.0.1:${port}/mcp`,port,token,
+    /** Call only with proof received from the real host's completed tool result. */
+    acknowledgeDelivery: gateway.acknowledgeDelivery,
     async close(){
       if(closed)return;closed=true;for(const controller of active.values())controller.abort();
       server.closeAllConnections();await new Promise<void>(resolve=>server.close(()=>resolve()));

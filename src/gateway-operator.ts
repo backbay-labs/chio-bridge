@@ -3,7 +3,8 @@ import { closeSync, fsyncSync, lstatSync, mkdirSync, openSync, readFileSync, rea
 import { hostname } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gatewayApprovalPath, gatewayBinding, operationKey, privatePath, readGatewayConfig, type GatewayConfig, type StoredOperation } from "./gateway.js";
+import { createGateway, gatewayApprovalPath, gatewayBinding, operationKey, privatePath, readGatewayConfig, type GatewayConfig, type StoredOperation } from "./gateway.js";
+import { verifyCompletedOutcome } from "./execution.js";
 import { verifyApprovalToolCall } from "./approval.js";
 
 function syncDirectory(path: string) { const fd=openSync(path,"r");try{fsyncSync(fd);}finally{closeSync(fd);} }
@@ -24,10 +25,10 @@ export function gatewayStatus(config: GatewayConfig) {
   const operations=names.filter(name=>name.endsWith(".json")).map(name=>{
     const record=privateJson(join(config.journalDir,name)) as StoredOperation;
     if(!record.requestId||!["pending","awaiting_approval","not_dispatched","unknown","denied","completed"].includes(record.state))throw new Error("corrupt operation journal");
-    return {requestId:record.requestId,state:record.state,acknowledged:record.acknowledged===true};
+    return {requestId:record.requestId,state:record.state,acknowledged:record.acknowledged===true,hostDeliveryRequired:record.hostDeliveryRequired!==false,hostDeliveryConfirmed:record.hostDeliveryConfirmed===true};
   });
   return {schema:"chio.gateway.status.v1",sessionId:config.sessionId,lock:owner?{...owner,state:ownerState(owner)}:{state:"missing"},operations,
-    fenced:operations.some(record=>record.state!=="not_dispatched"&&!(record.state==="completed"&&record.acknowledged))};
+    fenced:operations.some(record=>record.state!=="not_dispatched"&&!(record.state==="completed"&&record.acknowledged&&(!record.hostDeliveryRequired||record.hostDeliveryConfirmed)))};
 }
 export function recoverGatewayLock(config:GatewayConfig) {
   checkBinding(config);
@@ -52,10 +53,25 @@ function proposal(config:GatewayConfig,requestId:string) {
 }
 async function main() {
   const [action,configPath,...args]=process.argv.slice(2);
-  if(!configPath||resolve(configPath)!==configPath)throw new Error("usage: chio-gateway-operator status|recover-lock|approval-submit|approval-decide CONFIG [arguments]");
+  if(!configPath||resolve(configPath)!==configPath)throw new Error("usage: chio-gateway-operator status|recover-lock|delivery-export|delivery-acknowledge|approval-submit|approval-decide CONFIG [arguments]");
   const config=readGatewayConfig(configPath);
   if(action==="status"&&args.length===0){process.stdout.write(JSON.stringify(gatewayStatus(config))+"\n");return;}
   if(action==="recover-lock"&&args.length===0){process.stdout.write(JSON.stringify(recoverGatewayLock(config))+"\n");return;}
+  if(action==="delivery-export"&&args.length===2){
+    const [requestId,output]=args;checkBinding(config);
+    const record=privateJson(join(config.journalDir,operationKey(requestId!)+".json")) as StoredOperation;
+    if(record.state!=="completed"||!record.request||record.outcome?.state!=="completed"||record.requestId!==requestId
+      ||!verifyCompletedOutcome(record.outcome,config.execution,record.request))throw new Error("only a verified retained completion can be exported");
+    const fd=openSync(output!,"wx",0o600);
+    try{writeFileSync(fd,JSON.stringify({schema:"chio.gateway.delivered-outcome.v1",request:record.request,outcome:record.outcome},null,2)+"\n");fsyncSync(fd);}finally{closeSync(fd);}syncDirectory(dirname(output!));
+    process.stdout.write(JSON.stringify({output,requestId,protectedDispatch:false,acknowledgedByExport:false})+"\n");return;
+  }
+  if(action==="delivery-acknowledge"&&args.length===1){
+    const received=privateJson(args[0]!);
+    if(received.schema!=="chio.gateway.delivered-outcome.v1"||!received.request||!verifyCompletedOutcome(received.outcome,config.execution,received.request))throw new Error("received outcome is not a trusted exact completion");
+    const gateway=createGateway(config,undefined,{requireHostAcknowledgement:true});
+    try{const result=await gateway.acknowledgeDelivery(received.outcome.delivery);if(!result.acknowledged)throw new Error(result.reason);process.stdout.write(JSON.stringify({...result,protectedDispatch:false})+"\n");}finally{gateway.close();}return;
+  }
   const [requestId,operatorPath,artifactOrId,decision]=args;
   if(!requestId||!operatorPath||!artifactOrId||!['approval-submit','approval-decide'].includes(action??""))throw new Error("approval-submit CONFIG REQUEST_ID OPERATOR_FILE NEW_OUTPUT; approval-decide CONFIG REQUEST_ID OPERATOR_FILE APPROVAL_ID approved|denied");
   const proposed=proposal(config,requestId);const operator=privateJson(operatorPath);

@@ -26,7 +26,11 @@ async function rpc(method,params){
  if(method==="initialize")session=response.headers.get("mcp-session-id");
  assert.equal(response.status,200);return response.json();
 }
-async function call(name,args){const raw=await rpc("tools/call",{name,arguments:args});return {raw,outcome:JSON.parse(raw.result.content[0].text)};}
+async function call(name,args){
+ const raw=await rpc("tools/call",{name,arguments:args});const outcome=JSON.parse(raw.result.content[0].text);
+ if(outcome.state==="completed"){const ack=await rpc("chio/acknowledge",outcome.delivery);assert.equal(ack.result.acknowledged,true);}
+ return {raw,outcome};
+}
 try{
  await rpc("initialize",{protocolVersion:"2025-11-25"});const inventory=await rpc("tools/list",{});
  assert.equal(inventory.result.tools.length,mode==="approval"?5:4);record("discovery",{passed:true,inventory});
