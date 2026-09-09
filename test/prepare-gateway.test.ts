@@ -80,6 +80,7 @@ for (const [name, scenario] of [
   ["missing separate admin credential", { input: { adminToken: undefined } }],
   ["admin credential reused as bootstrap bearer", { input: { adminToken: "private-bootstrap-token" } }],
   ["unbounded credential lifetime", { input: { credentialTtlSeconds: 3601 } }],
+  ["MCP path supplied as an endpoint origin", { endpointSuffix: "/mcp" }],
   ["wrong operator server", { contextServer: "other-server" }],
   ["kernel without credential exchange", { status: 404 }],
   ["malformed credential exchange", { malformed: true }],
