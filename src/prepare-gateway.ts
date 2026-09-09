@@ -15,10 +15,11 @@ async function main() {
   const stat = lstatSync(requestPath);
   if (!stat.isFile() || stat.isSymbolicLink() || (stat.mode & 0o077) !== 0 || stat.size > 1024 * 1024) throw new Error("operator request must be a private regular file");
   const input = JSON.parse(readFileSync(requestPath, "utf8"));
-  const { endpoint, bearerToken, adminToken, credentialTtlSeconds, trustedSigners, serverId, journalDir, sessionId, allowedTools } = input;
-  const url = new URL(endpoint);
+  const { endpoint: requestedEndpoint, bearerToken, adminToken, credentialTtlSeconds, trustedSigners, serverId, journalDir, sessionId, allowedTools } = input;
+  const url = new URL(requestedEndpoint);
   if (url.protocol !== "https:" && !(url.protocol === "http:" && ["127.0.0.1", "localhost", "[::1]"].includes(url.hostname))) throw new Error("authenticated endpoint requires HTTPS or loopback HTTP");
   if (url.username || url.password || url.search || url.hash || url.pathname !== "/") throw new Error("endpoint must be a bare origin without credentials, query, fragment or MCP path");
+  const endpoint = url.origin;
   if (typeof bearerToken !== "string" || !bearerToken || typeof adminToken !== "string" || !adminToken || adminToken === bearerToken
     || !Number.isSafeInteger(credentialTtlSeconds) || credentialTtlSeconds < 1 || credentialTtlSeconds > 3600
     || typeof serverId !== "string" || !serverId || typeof journalDir !== "string" || resolve(journalDir) !== journalDir || typeof sessionId !== "string" || !sessionId

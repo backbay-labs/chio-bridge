@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-type Scenario = { input?: Record<string, unknown>; credential?: Record<string, unknown>; contextServer?: string; delegated?: Record<string, unknown>; status?: number; malformed?: boolean };
+type Scenario = { input?: Record<string, unknown>; endpointSuffix?: string; credential?: Record<string, unknown>; contextServer?: string; delegated?: Record<string, unknown>; status?: number; malformed?: boolean };
 async function prepare(scenario: Scenario = {}) {
   const directory = mkdtempSync(join(tmpdir(), "chio-prepare-test-"));
   const calls: { method: string; authorization: string | undefined; path: string }[] = [];
@@ -46,7 +46,7 @@ async function prepare(scenario: Scenario = {}) {
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
   const address = server.address(); assert.ok(address && typeof address === "object");
   const requestPath = join(directory, "operator.json"); const outputPath = join(directory, "gateway.json");
-  writeFileSync(requestPath, JSON.stringify({ endpoint: `http://127.0.0.1:${address.port}`, bearerToken: "private-bootstrap-token", adminToken: "private-admin-token", credentialTtlSeconds: 300, trustedSigners: ["cd".repeat(32)], serverId: "fs", journalDir: join(directory, "journal"), sessionId: "logical-host-session", allowedTools: ["read_file"], ...scenario.input }), { mode: 0o600 });
+  writeFileSync(requestPath, JSON.stringify({ endpoint: `http://127.0.0.1:${address.port}${scenario.endpointSuffix ?? ""}`, bearerToken: "private-bootstrap-token", adminToken: "private-admin-token", credentialTtlSeconds: 300, trustedSigners: ["cd".repeat(32)], serverId: "fs", journalDir: join(directory, "journal"), sessionId: "logical-host-session", allowedTools: ["read_file"], ...scenario.input }), { mode: 0o600 });
   try {
     const child = spawn(process.execPath, [fileURLToPath(new URL("../dist/prepare-gateway.js", import.meta.url)), requestPath, outputPath]);
     let stdout = ""; let stderr = ""; child.stdout.on("data", data => { stdout += data; }); child.stderr.on("data", data => { stderr += data; });
@@ -61,8 +61,9 @@ async function prepare(scenario: Scenario = {}) {
 }
 
 test("operator preparation persists only a scope-confirmed delegated bearer, without any tool effect", async () => {
-  const result = await prepare(); assert.equal(result.status, 0, result.stderr); assert.equal(result.mode, 0o600);
+  const result = await prepare({ endpointSuffix: "/" }); assert.equal(result.status, 0, result.stderr); assert.equal(result.mode, 0o600);
   const config = JSON.parse(result.output!);
+  assert.equal(new URL(config.execution.endpoint).origin, config.execution.endpoint);
   assert.equal(config.execution.bearerToken, "delegated-session-token");
   assert.equal(config.execution.sessionId, "kernel-session");
   assert.equal(config.execution.subjectKey, "ab".repeat(32));
