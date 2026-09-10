@@ -259,6 +259,21 @@ async function main() {
 }
 // Node resolves the module location physically unless preserve-symlinks-main is set.
 // Canonicalize both sides so npm bin links and symlinked install parents also start.
-if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
+function isGatewayEntrypoint(): boolean {
+  const entry = process.argv[1];
+  // In stdin/eval mode argv[1] is absent, '-' or a user argument, not a script.
+  // Even an eval argument naming this file must not start the gateway on import.
+  const evaluatesCode = process.execArgv.some(arg => /^--(?:eval|print)(?:=|$)|^-[ep]/.test(arg));
+  if (!entry || entry === "-" || evaluatesCode) return false;
+  let canonicalEntry: string;
+  try { canonicalEntry = realpathSync(entry); }
+  catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT" || code === "ENOTDIR") return false;
+    throw error;
+  }
+  return canonicalEntry === realpathSync(fileURLToPath(import.meta.url));
+}
+if (isGatewayEntrypoint()) {
   main().catch(() => { process.stderr.write("Chio gateway startup or persistence failed; protected tools unavailable.\n"); process.exitCode = 1; });
 }
