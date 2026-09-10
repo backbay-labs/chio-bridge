@@ -1,80 +1,244 @@
 name: release
 
-# SLSA L3 + Sigstore provenance + reproducible build for @chio/bridge.
-#
-# Triggered only by semver tag pushes (v1.2.3). Out-of-scope in Wave 5.5:
-# tagging / pushing tags themselves.
-#
-# Secrets referenced:
-#   NPM_TOKEN  — npm publish auth (skip if using npm Trusted Publishers).
-#
-# Placeholders:
-#   owner/chio-ci-actions — swap to your GH org before pushing.
-
+# Manual runs qualify artifacts only. Tag pushes may publish after protected
+# environment review; package checks do not establish host I01-I08 acceptance.
 on:
   push:
-    tags:
-      - "v*.*.*"
+    tags: ["v*.*.*"]
   workflow_dispatch:
-    inputs:
-      tag:
-        description: "Fake tag for dry-run (e.g. v0.0.0-dev)"
-        required: false
-        default: "v0.0.0-dev"
-      dry-run:
-        description: "If 'true', build + pack but do not publish."
-        required: false
-        default: "true"
 
 permissions:
   contents: read
-  id-token: write       # npm --provenance + SLSA generator
-  attestations: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  TZ: UTC
+  LC_ALL: C
+  PACKAGE_DIRECTORY: .
+  PACKAGE_NAME: "@chio/bridge"
+  TAG_PREFIX: v
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    name: Qualify staged package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     outputs:
-      artifact-name: ${{ steps.hash.outputs.artifact-name }}
-      hashes: ${{ steps.hash.outputs.hashes }}
+      subjects: ${{ steps.subjects.outputs.subjects }}
+      version: ${{ steps.identity.outputs.version }}
     steps:
-      - name: Checkout (fetch tags for SOURCE_DATE_EPOCH)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
-
-      - name: Build + pack + publish
-        id: publish
-        # Placeholder: swap `owner/chio-ci-actions` to your GH org.
-        uses: owner/chio-ci-actions/publish-chio@v0.1.0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          artifact-type: npm
-          package-name: "@chio/bridge"
-          tag: ${{ github.event.inputs.tag || github.ref_name }}
-          dry-run: ${{ github.event.inputs.dry-run || 'false' }}
+          node-version: '22.19.0'
+      - name: Pin npm
+        run: npm install --global npm@11.8.0 --ignore-scripts --no-audit --no-fund
+      - name: Bind package, tag, and source identity
+        id: identity
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Compute subjects for SLSA generator
-        id: hash
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          name="$(basename "${{ steps.publish.outputs.artifact-path }}")"
-          sha="${{ steps.publish.outputs.artifact-sha256 }}"
-          # Generic generator expects base64(<hex>  <name>\n...).
-          echo "hashes=$(printf '%s  %s\n' "$sha" "$name" | base64 -w0)" >> "$GITHUB_OUTPUT"
-          echo "artifact-name=$name" >> "$GITHUB_OUTPUT"
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test -z "$(git status --porcelain)"
+          echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct HEAD)" >> "${GITHUB_ENV}"
+          node --input-type=module <<'NODE'
+          import { readFileSync, appendFileSync } from 'node:fs';
+          const pkg = JSON.parse(readFileSync(`${process.env.PACKAGE_DIRECTORY}/package.json`));
+          if (pkg.name !== process.env.PACKAGE_NAME) throw new Error('wrong package');
+          if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(pkg.version)) throw new Error('invalid version');
+          const expected = `https://github.com/${process.env.GITHUB_REPOSITORY}.git`;
+          if (pkg.repository?.url !== expected) throw new Error(`repository.url must equal ${expected}`);
+          if (process.env.GITHUB_EVENT_NAME === 'push' && process.env.GITHUB_REF_NAME !== `${process.env.TAG_PREFIX}${pkg.version}`) throw new Error('tag/package version mismatch');
+          appendFileSync(process.env.GITHUB_OUTPUT, `version=${pkg.version}\n`);
+          NODE
+          if [[ "${GITHUB_EVENT_NAME}" == push ]]; then
+            test "$(git rev-parse "${GITHUB_REF}^{commit}")" = "${GITHUB_SHA}"
+            git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main
+          fi
+          # The SLSA verifier requires a release-tag reference. Fail if the
+          # verified upstream tag moves; ordinary actions use commit SHAs.
+          test "$(gh api repos/slsa-framework/slsa-github-generator/git/ref/tags/v2.1.0 --jq '.object.sha')" = f7dd8c54c2067bafc12ca7a55595d5ee9b75204a
+      - name: Install locked dependencies
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Typecheck, build, and unit regressions
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          npm run typecheck
+          npm run build
+          npm test
+      - name: Build staged release artifact
+        working-directory: ${{ env.PACKAGE_DIRECTORY }}
+        run: |
+          set -euo pipefail
+          npm run pack:release -- "${RUNNER_TEMP}/chio-release"
+
+      - name: Verify clean consumer installation and packaged entrypoints
+        run: |
+          set -euo pipefail
+          cd "${RUNNER_TEMP}/chio-release"
+          sha256sum --check ./*.sha256
+          artifacts=(./*.tgz)
+          test "${#artifacts[@]}" -eq 1
+          package_artifact="$(realpath "${artifacts[0]}")"
+          consumer_dir="$(mktemp -d "${RUNNER_TEMP}/chio-consumer.XXXXXX")"
+          cache_dir="$(mktemp -d "${RUNNER_TEMP}/chio-empty-cache.XXXXXX")"
+          cd "${consumer_dir}"
+          printf '%s\n' '{"private":true}' > package.json
+          npm install --offline --ignore-scripts --no-audit --no-fund --cache "${cache_dir}" "${package_artifact}"
+          node --input-type=module <<'NODE'
+          import { readFileSync, existsSync, realpathSync } from 'node:fs';
+          import { resolve, relative, isAbsolute } from 'node:path';
+          import { execFileSync } from 'node:child_process';
+          const root = resolve('node_modules', process.env.PACKAGE_NAME);
+          const pkg = JSON.parse(readFileSync(`${root}/package.json`));
+          if (pkg.name !== process.env.PACKAGE_NAME) throw new Error('wrong installed package');
+          if (pkg.scripts) throw new Error('staged release retains lifecycle scripts');
+          for (const version of Object.values(pkg.dependencies ?? {})) {
+            if (/^(file:|link:|workspace:)/.test(version)) throw new Error('unresolved local dependency');
+          }
+          const bins = typeof pkg.bin === 'string' ? [pkg.bin] : Object.values(pkg.bin ?? {});
+          for (const entry of [pkg.main, ...bins].filter(Boolean)) {
+            const target = resolve(root, entry);
+            if (!existsSync(target)) throw new Error(`missing entrypoint ${entry}`);
+            const rel = relative(root, realpathSync(target));
+            if (rel.startsWith('..') || isAbsolute(rel)) throw new Error('entrypoint escapes installed package');
+            execFileSync(process.execPath, ['--check', target], { stdio: 'inherit' });
+          }
+          NODE
+          npm publish "${package_artifact}" --dry-run --ignore-scripts --access public
+      - name: Record source and artifact identities
+        id: subjects
+        env:
+          PACKAGE_VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          cd "${RUNNER_TEMP}/chio-release"
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          writeFileSync('release-identity.json', `${JSON.stringify({
+            repository: process.env.GITHUB_REPOSITORY, source: process.env.GITHUB_SHA,
+            ref: process.env.GITHUB_REF, package: process.env.PACKAGE_NAME,
+            version: process.env.PACKAGE_VERSION, node: process.version,
+            workflowRun: process.env.GITHUB_RUN_ID, workflowAttempt: process.env.GITHUB_RUN_ATTEMPT,
+            qualification: 'source, unit, and clean package checks; host acceptance is separate'
+          }, null, 2)}\n`);
+          NODE
+          sha256sum -- *.tgz  release-identity.json > SHA256SUMS
+          echo "subjects=$(base64 -w0 < SHA256SUMS)" >> "${GITHUB_OUTPUT}"
+      - name: Retain qualified artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: qualified-package
+          path: ${{ runner.temp }}/chio-release
+          if-no-files-found: error
+          retention-days: 90
 
   provenance:
-    needs: [build]
-    # SLSA L3 requires the generator to run as a top-level reusable workflow.
+    name: Generate isolated SLSA provenance
+    needs: build
     permissions:
       id-token: write
-      contents: read
+      # Required by the reusable workflow declaration; upload-assets is false.
+      contents: write
       actions: read
-    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    # Upstream requires a version tag for slsa-verifier. The build job checks
+    # v2.1.0 resolves to f7dd8c54c2067bafc12ca7a55595d5ee9b75204a.
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
-      base64-subjects: ${{ needs.build.outputs.hashes }}
-      upload-assets: true
-      provenance-name: "${{ needs.build.outputs.artifact-name }}.intoto.jsonl"
+      base64-subjects: ${{ needs.build.outputs.subjects }}
+      provenance-name: package.intoto.jsonl
+      upload-assets: false
+
+  publish:
+    name: Publish qualified package
+    needs: [build, provenance]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+      actions: read
+    steps:
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.19.0'
+          registry-url: https://registry.npmjs.org
+      - name: Pin npm
+        run: npm install --global npm@11.8.0 --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: qualified-package
+          path: release
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: package.intoto.jsonl
+          path: release
+      - uses: slsa-framework/slsa-verifier/actions/installer@ea584f4502babc6f60d9bc799dbbb13c1caa9ee6 # v2.7.1
+      - name: Verify provenance, source, and artifact digests
+        working-directory: release
+        run: |
+          set -euo pipefail
+          sha256sum --check SHA256SUMS
+          node --input-type=module <<'NODE'
+          import { readFileSync } from 'node:fs';
+          const id = JSON.parse(readFileSync('release-identity.json'));
+          if (id.source !== process.env.GITHUB_SHA || id.repository !== process.env.GITHUB_REPOSITORY || id.ref !== process.env.GITHUB_REF || id.package !== process.env.PACKAGE_NAME) throw new Error('artifact identity mismatch');
+          NODE
+          slsa-verifier verify-artifact ./*.tgz  release-identity.json \
+            --provenance-path package.intoto.jsonl \
+            --source-uri "github.com/${GITHUB_REPOSITORY}" --source-tag "${GITHUB_REF_NAME}"
+      - uses: sigstore/cosign-installer@dc72c7d5c4d10cd6bcb8cf6e3fd625a9e5e537da # v3.7.0 commit
+        with:
+          cosign-release: v2.4.1
+      - name: Sign and verify checksum index
+        working-directory: release
+        run: |
+          set -euo pipefail
+          cosign sign-blob --yes --output-signature SHA256SUMS.sig --output-certificate SHA256SUMS.pem SHA256SUMS
+          cosign verify-blob --certificate SHA256SUMS.pem --signature SHA256SUMS.sig \
+            --certificate-identity "https://github.com/${GITHUB_WORKFLOW_REF}" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com SHA256SUMS
+      - name: Publish exact tarball with npm Trusted Publishing
+        working-directory: release
+        env:
+          PACKAGE_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          set -euo pipefail
+          dist_tag=latest
+          if [[ "${PACKAGE_VERSION}" == *-* ]]; then dist_tag=next; fi
+          npm publish ./*.tgz --access public --provenance --ignore-scripts --tag "${dist_tag}"
+      - name: Attach reviewed artifacts and evidence
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(--repo "${GITHUB_REPOSITORY}" --verify-tag --title "${PACKAGE_NAME} ${GITHUB_REF_NAME}" --notes "Qualified package artifacts. See docs/RELEASE-QUALIFICATION.md for evidence verification and the separate host acceptance boundary.")
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then args+=(--prerelease); fi
+          gh release create "${GITHUB_REF_NAME}" "${args[@]}" ./*.tgz  SHA256SUMS SHA256SUMS.sig SHA256SUMS.pem release-identity.json package.intoto.jsonl
+      - name: Retain publication evidence even after a registry or upload failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publication-evidence
+          path: release
+          if-no-files-found: error
+          retention-days: 90
