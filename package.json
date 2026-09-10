@@ -1,6 +1,6 @@
 {
   "name": "@chio/bridge",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Shared integration library for chio plugins that wrap the chio protocol",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,12 +25,17 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "chio-doctor": "./dist/doctor/bin.js"
+    "chio-doctor": "./dist/doctor/bin.js",
+    "chio-mcp-gateway": "./dist/gateway.js",
+    "chio-prepare-gateway": "./dist/prepare-gateway.js",
+    "chio-gateway-operator": "./dist/gateway-operator.js"
   },
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "vendor",
+    "ACCEPTANCE.md"
   ],
   "engines": {
     "node": ">=22"
@@ -40,11 +45,11 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run build && node --experimental-strip-types --test ./test/*.test.ts",
     "test:live": "npm run build && node --experimental-strip-types --test ./test/live/*.test.ts",
-    "prepack": "node ./scripts/prep-publish.mjs && npm run build",
-    "postpack": "node ./scripts/restore-publish.mjs"
+    "prepack": "node -e \"throw new Error('Use npm run pack:release for a self-contained staged artifact')\"",
+    "pack:release": "node scripts/pack-release.mjs"
   },
   "dependencies": {
-    "@chio-protocol/sdk": "^0.1.0",
+    "@chio-protocol/sdk": "file:vendor/chio-protocol-sdk-0.1.1-rc.1-ea8639364db1.tgz",
     "yaml": "^2.5.0",
     "zod": "^3.23.8"
   },
@@ -52,5 +57,9 @@
     "@types/node": "^22.0.0",
     "typescript": "~5.7.0"
   },
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/backbay-labs/chio-bridge.git"
+  }
 }

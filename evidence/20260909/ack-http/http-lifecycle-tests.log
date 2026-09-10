@@ -1,0 +1,10 @@
+✔ HTTP guest transport exposes only bounded tools and closing it removes authority route (106.948292ms)
+✔ killing launcher process removes transport even while a separate client remains alive (216.292542ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 515.7985

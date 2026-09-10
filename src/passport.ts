@@ -1,16 +1,11 @@
-import {
-  generateKeyPairSync,
-  createPrivateKey,
-  createPublicKey,
-} from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ChioCli } from "./client/cli.js";
 import type { DaemonClient } from "./client/daemon.js";
 import { ChioBridgeError, NotInitializedError } from "./errors.js";
-import { checkCall } from "./check.js";
-import { isChioDid, type CreatePassportOptions, type Passport } from "./types.js";
+import { didSuffix, isChioDid, type CreatePassportOptions, type Passport } from "./types.js";
 
 /**
  * Wire shape returned by `POST /v1/passport/statuses`. Mirrors
@@ -83,42 +78,25 @@ export async function createPassport(
     );
   }
 
-  const validityDays = Math.max(1, Math.floor(opts.validityDays ?? 30));
+  if (typeof opts.subjectPublicKey !== "string" || !/^[a-f0-9]{64}$/i.test(opts.subjectPublicKey)) {
+    throw new ChioBridgeError("passport_subject_required", "createPassport() requires an explicit 64-hex subjectPublicKey with existing attested receipts; it never infers identity from another receipt");
+  }
+  const subjectPublicKey = opts.subjectPublicKey.toLowerCase();
+  if (opts.subject !== undefined && didSuffix(opts.subject)?.toLowerCase() !== subjectPublicKey) {
+    throw new ChioBridgeError("passport_invalid", "subject DID does not match the explicit subjectPublicKey");
+  }
+  const validityDays = opts.validityDays ?? 30;
+  if (!Number.isSafeInteger(validityDays) || validityDays < 1) {
+    throw new ChioBridgeError("invalid_arg", "validityDays must be a positive safe integer");
+  }
 
   const tmpDir = await mkdtemp(join(tmpdir(), "chio-passport-"));
   const passportPath = join(tmpDir, "passport.json");
   const seedPath = join(tmpDir, "signing-seed.hex");
   try {
-    const { subjectPublicKeyHex } = await writeFreshSigningSeed(seedPath);
-    let subjectPublicKey = await resolveSubjectPublicKey(
-      cli,
-      receiptDbPath,
-      subjectPublicKeyHex,
-    );
-    // Fresh receipt-db guard: when the DB has NO receipts at all,
-    // resolveSubjectPublicKey falls through to `preferredHex` (our
-    // brand-new keypair). `chio passport create` will then reject with
-    // `no receipts found for subject <hex>`. This is the Gap 3
-    // signature surfaced by the OpenCode chio_init smoke — a bridge
-    // consumer without a pre-seeded receipt hits an opaque 422.
-    //
-    // Fix: if the daemon is reachable, bootstrap a seed receipt via an
-    // always-allowed `echo` check against the MCP edge. The edge
-    // stamps a receipt with the kernel-minted subject key; we re-run
-    // `resolveSubjectPublicKey` to pick that key up. This keeps the
-    // cold-boot bond path idempotent without requiring plugin authors
-    // to remember to call `check()` first.
-    if (subjectPublicKey === subjectPublicKeyHex && daemon) {
-      const seeded = await seedBootstrapReceipt(daemon, receiptDbPath);
-      if (seeded) {
-        subjectPublicKey = await resolveSubjectPublicKey(
-          cli,
-          receiptDbPath,
-          subjectPublicKeyHex,
-        );
-      }
-    }
-
+    await writeFreshSigningSeed(seedPath);
+    // Passport creation does not execute a fixture tool to manufacture evidence.
+    // A fresh database must be populated by explicit, verified operator work.
     // Drive the real CLI flag surface documented by
     // `chio passport create --help`:
     //   --subject-public-key, --output, --signing-seed-file,
@@ -137,7 +115,8 @@ export async function createPassport(
       "--validity-days",
       String(validityDays),
     ];
-    const createResult = await cli.run([...createArgs, "--format", "json"]);
+    // The passport body is written to --output; no stdout format flag is needed.
+    const createResult = await cli.run(createArgs);
     if (createResult.exitCode !== 0) {
       throw new ChioBridgeError(
         "passport_create_failed",
@@ -160,10 +139,11 @@ export async function createPassport(
       );
     }
     if (typeof passportJson.subject !== "string" ||
-        !isChioDid(passportJson.subject)) {
+        !isChioDid(passportJson.subject) ||
+        didSuffix(passportJson.subject)?.toLowerCase() !== subjectPublicKey) {
       throw new ChioBridgeError(
         "passport_invalid",
-        `chio passport create produced a passport with non-did:chio subject: ${passportJson.subject ?? "<missing>"}`,
+        "chio passport create produced a subject that does not match the explicit subjectPublicKey",
       );
     }
 
@@ -187,10 +167,10 @@ export async function createPassport(
         );
       }
       record = res.data as PassportLifecycleRecord;
-      if (!record.subject || !isChioDid(record.subject)) {
+      if (record.subject !== passportJson.subject) {
         throw new ChioBridgeError(
           "passport_invalid",
-          `trust plane returned invalid lifecycle record (expected did:chio: subject, got ${record.subject ?? "<empty>"})`,
+          "trust plane lifecycle subject does not match the signed passport subject",
         );
       }
     }
@@ -333,122 +313,10 @@ function deriveHarnessReceiptDb(): string | undefined {
   return join(harness, "var", "receipts.sqlite");
 }
 
-/**
- * Seeds a bootstrap receipt in the receipt DB for the cold-boot bond
- * path. Returns `true` when a receipt was (or might have been) written
- * and a rescan of the DB is warranted. On failure returns `false` so
- * the caller surfaces the original "no receipts found" error without
- * getting a confusing bootstrap-related stack.
- *
- * Uses `checkCall(daemon, undefined, {tool: "echo", params: {...}})`
- * which drives the MCP edge's `tools/call` path. The edge stamps a
- * receipt against whichever subject key the kernel mints for the
- * bearer token, which is exactly the key the subsequent
- * `resolveSubjectPublicKey` peek will recover.
- */
-async function seedBootstrapReceipt(
-  daemon: DaemonClient,
-  receiptDbPath: string,
-): Promise<boolean> {
-  // This tool is part of the chio-test-harness hello-mcp server and is
-  // always-allowed by canonical.yaml. Production consumers who use a
-  // different MCP fixture should pre-seed their receipt DB by running
-  // one allowed call before calling bond(); this bootstrap is a best
-  // effort for the common harness case.
-  void receiptDbPath; // receipt-db routing is handled by the edge config
-  try {
-    await checkCall(daemon, undefined, {
-      tool: "echo",
-      params: { msg: "chio-bridge:bond:bootstrap" },
-    });
-    return true;
-  } catch {
-    // Swallow: caller will surface the downstream "no receipts" error
-    // when the real `chio passport create` runs, giving a clear signal
-    // to the operator that a warmup is required.
-    return false;
-  }
-}
-
-async function writeFreshSigningSeed(seedPath: string): Promise<{
-  seedHex: string;
-  subjectPublicKeyHex: string;
-}> {
-  // Generate an Ed25519 keypair and extract the 32-byte raw seed + raw
-  // public key. Node's PKCS#8 DER encoding for Ed25519 is 48 bytes: the
-  // last 32 are the private seed. The SPKI DER encoding is 44 bytes:
-  // the last 32 are the public key.
-  const { privateKey, publicKey } = generateKeyPairSync("ed25519");
+async function writeFreshSigningSeed(seedPath: string): Promise<void> {
+  // The temporary key signs the issuer credential, never selects the subject.
+  const { privateKey } = generateKeyPairSync("ed25519");
   const privDer = privateKey.export({ type: "pkcs8", format: "der" });
-  const pubDer = publicKey.export({ type: "spki", format: "der" });
-  const seed = Buffer.from(privDer).subarray(-32);
-  const pub = Buffer.from(pubDer).subarray(-32);
-  const seedHex = seed.toString("hex");
-  const subjectPublicKeyHex = pub.toString("hex");
+  const seedHex = Buffer.from(privDer).subarray(-32).toString("hex");
   await writeFile(seedPath, seedHex, { mode: 0o600 });
-  // Silence unused-lint warnings for crypto import typechecks.
-  void createPrivateKey;
-  void createPublicKey;
-  return { seedHex, subjectPublicKeyHex };
-}
-
-/**
- * `arc passport create` refuses to build a passport unless the receipt DB
- * already contains at least one receipt for the given subject key. The
- * trust plane's MCP edge stamps receipts against whichever subject key
- * the kernel minted for a check call, so a freshly-generated keypair has
- * no receipts yet. To stay compatible with the current harness, we peek
- * at the most recent receipt and reuse its subject key.
- *
- * This is a documented limitation of the "bootstrap a brand-new agent"
- * path on a harness that has not been preloaded with receipts for the
- * caller's key. A production flow would run a warmup check() first,
- * then pass that subject's public key here. Downstream smoke-test agents
- * that want full subject control should pass `opts.subjectPublicKey` via
- * a future extension to `CreatePassportOptions`.
- *
- * Returns the subject key the caller should stamp on the passport. When
- * the receipt DB already holds receipts for the freshly-generated key
- * (e.g. a smoke test warmed it up), `preferredHex` is returned directly.
- */
-async function resolveSubjectPublicKey(
-  cli: ChioCli,
-  receiptDbPath: string,
-  preferredHex: string,
-): Promise<string> {
-  // Try the preferred key first — if the caller has warmed up receipts
-  // against it, arc passport create will succeed without fallback.
-  // (We can't cheaply test this without running `arc passport create`
-  // itself, so we just pass `preferredHex` through; on `no receipts
-  // found for subject` we fall back to the most-recent receipt.)
-  //
-  // Shortcut: if the DB is empty or the preferred key has zero receipts,
-  // `arc receipt list --limit 1` will tell us the newest subject.
-  try {
-    const raw = await cli.run([
-      "--receipt-db",
-      receiptDbPath,
-      "receipt",
-      "list",
-      "--limit",
-      "1",
-    ]);
-    if (raw.exitCode === 0) {
-      const line = raw.stdout.split("\n").find((l) => l.trim().startsWith("{"));
-      if (line) {
-        const rec = JSON.parse(line) as {
-          metadata?: {
-            attribution?: { subject_key?: string };
-          };
-        };
-        const subjectKey = rec.metadata?.attribution?.subject_key;
-        if (typeof subjectKey === "string" && /^[0-9a-f]{64}$/i.test(subjectKey)) {
-          return subjectKey;
-        }
-      }
-    }
-  } catch {
-    // fall through to preferred
-  }
-  return preferredHex;
 }

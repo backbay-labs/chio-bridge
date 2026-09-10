@@ -1,0 +1,11 @@
+{
+  "src/execution.ts": "e8c11a67a1098b532a957467b4df90e42d185395cad2f9fdfee97f8248107f5e",
+  "src/gateway.ts": "10fdf284109dabd29dbf3ff3bf6450a80647e61d87c0a26e65f08c04da634ba4",
+  "src/gateway-http.ts": "0f4dbfbfbcc0e3cce3907172b62e7263ec2d0f97cfcaca370400fdf32ee351bb",
+  "src/gateway-operator.ts": "9872ee2cdd5cd36896feeae691dd92b3ed3adaee4b24f248d95edc96c4d95b1b",
+  "src/approval.ts": "b37fb38d3f5cd0bea0fd1d634c08ce1929565814fb5d292f94c95ebf505e35dd",
+  "test/live/required-gateway.mjs": "c70bd36611f2d3b546b55877ba7ba2a44dd60fe63c2d02f45e5172d490ab25aa",
+  "dist/index.js": "e441e290a9b49f2ecdd2b69d66c1a4afd7aded56a91790c47f0bd88255cbf973",
+  "dist/gateway-http.js": "01c713f4853c5b92b101aae7abdf8f958cde6e1bf7c22dfba82a6b5ac2fd6832",
+  "dist/gateway.js": "33cc5aacbd82610fc1d6e8d81ca2d520dbf83cb2c661429978fcba1cc8f679fe"
+}

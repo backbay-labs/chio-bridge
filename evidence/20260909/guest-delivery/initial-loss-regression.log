@@ -1,0 +1,31 @@
+✖ lost guest response cannot silently dispatch a replacement request (139.772666ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 335.133875
+
+✖ failing tests:
+
+test at test/gateway-http.test.ts:67:1
+✖ lost guest response cannot silently dispatch a replacement request (139.772666ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'completed'
+  - 'not_dispatched'
+  
+      at TestContext.<anonymous> (file:///Users/connor/Medica/backbay/standalone/chio-bridge/.worktrees/required-agent-integrations-20260909/test/gateway-http.test.ts:82:10)
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async Test.run (node:internal/test_runner/test:1116:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'completed',
+    expected: 'not_dispatched',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

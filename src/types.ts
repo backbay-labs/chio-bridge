@@ -124,6 +124,8 @@ export interface ToolGrant {
 
 export interface BondOptions {
   policyPath: string;
+  /** Explicit subject with existing attested receipts. Never inferred from the receipt store. */
+  subjectPublicKey?: string;
   ttl?: string;
   budgetUsd?: number;
   capabilityId?: string;
@@ -219,21 +221,21 @@ export interface ToolCall {
   policyPath?: string;
 }
 
-/**
- * Optional options for `ChioBridge.check()`. Wave D Bug 2 fix: thread a
- * bonded capability id (and an optional per-call cost hint in USD) so
- * the bridge can invoke the trust-plane mediation endpoint
- * (`POST /v1/budgets/authorize-exposure`) and enforce a running
- * cumulative budget across checks. When `capabilityId` is set but
- * `costUsd` is omitted or zero, the bridge skips the mediation call
- * (there is no spend to charge) and returns the underlying CLI /
- * daemon verdict unchanged. When both are set, the mediation endpoint
- * atomically accumulates the capability's exposed spend; if the
- * accumulated total would exceed the capability's budget cap, the
- * bridge returns `{ decision: "cancelled", guard: "velocity", ... }`
- * without invoking the downstream tool.
+/** Options for side-effect-free CLI policy evaluation and optional budget admission.
+ * A check is not execution evidence and does not enforce a resource boundary.
+ * A failed/ambiguous budget admission denies; it is never retried automatically.
  */
 export interface CheckOptions {
+  /** Admission-only by default. Full evaluates an explicit local output fixture, not the real tool. */
+  mode?: "preflight" | "full";
+  /** JSON file required in full mode; forbidden in preflight mode. */
+  outputFixturePath?: string;
+  /** Operator-owned durable admission database, required by policies with durable admission. */
+  sessionDbPath?: string;
+  /** Optional receipt persistence for this local evaluation; not evidence of real tool execution. */
+  receiptDbPath?: string;
+  /** Deadline for CLI evaluation and budget HTTP admission. Default 10000 ms. */
+  timeoutMs?: number;
   /** Capability id to thread through the mediation endpoint. When
    *  present, a non-zero costUsd triggers a budget-authorize-exposure
    *  POST against the trust plane. */
@@ -356,9 +358,9 @@ export interface AttenuationDelta {
 }
 
 export interface CreatePassportOptions {
-  /** Reserved. Currently unused: the real `arc passport create` flow
-   *  derives the subject DID from `--subject-public-key`, so passing a
-   *  string here has no effect. Retained for forward-compat. */
+  /** Explicit subject Ed25519 public key (64 hex characters) with existing attested receipts. */
+  subjectPublicKey?: string;
+  /** Optional subject DID assertion. Must match subjectPublicKey when provided. */
   subject?: string;
   scope?: CapabilityScope;
   /** Reserved. The real `arc passport create` takes validity in days, not

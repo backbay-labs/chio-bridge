@@ -1,0 +1,11 @@
+{
+  "claim": "shared bridge and kernel qualification only",
+  "kernelSha256": "0e683f6f7cc8f21816b10641e3c18fba2dd1445fbcd28752cd3260d8ac5edb5a",
+  "image": "sha256:188cb84d5d0bb4063d4ce5a3b9c3832445a5acda5604911cda80a9136d1850a0",
+  "volume": "chio-required-aggregate-approval-20260909",
+  "auditVolume": "chio-required-aggregate-approval-20260909-audit",
+  "mode": "approval",
+  "packageDir": "/Users/connor/Medica/backbay/standalone/chio-bridge/.worktrees/required-agent-integrations-20260909",
+  "configSha256": "952da8bee5a69c0cef12807bfd454467ad543e5263ff7ec2826274cf46f58296",
+  "cases": 7
+}

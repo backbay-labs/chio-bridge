@@ -99,7 +99,7 @@ function makeFakeChioForBond(subjectHex: string): string {
 
 test("Wave D Bug 1: CLI-mode bond() issues a real capability id via direct HTTP to the trust plane", async () => {
   const SUBJECT =
-    "1111222233334444555566667777888899990000aaaabbbbccccddddeeeefff0";
+    "1212121212121212121212121212121212121212121212121212121212121212";
   const CAP_ID_ISSUE = "cap-bond-issue-abc123";
   const CAP_ID_ATTENUATE = "cap-bond-attenuated-xyz789";
 
@@ -155,6 +155,7 @@ rules:
     const bridge = ChioBridge.fromCli({ chioBinary });
     const passport = await bridge.bond({
       policyPath,
+      subjectPublicKey: SUBJECT,
       ttl: "1h",
       budgetUsd: 500,
     });
@@ -165,17 +166,17 @@ rules:
     );
     assert.equal(
       passport.capabilityId,
-      CAP_ID_ATTENUATE,
-      `expected attenuated capability id, got "${passport.capabilityId}"`,
+      CAP_ID_ISSUE,
+      `expected issued capability id, got "${passport.capabilityId}"`,
     );
 
     // Verify the HTTP sequence: two issue calls (first for the scope,
     // second for the narrower budget-bearing scope) plus a revoke.
     const issueCalls = calls.filter((c) => /\/v1\/capabilities\/issue$/.test(c.url));
-    assert.equal(issueCalls.length, 2, "expected 2 issue calls (issue + attenuate)");
+    assert.equal(issueCalls.length, 1, "budget must be applied on first issuance");
     // The second issue call (attenuation) must include the budget on
     // each grant as max_total_cost = {units: 50000, currency: "USD"}.
-    const secondBody = JSON.parse(String(issueCalls[1].init?.body));
+    const secondBody = JSON.parse(String(issueCalls[0].init?.body));
     const grants = secondBody.scope?.grants ?? [];
     assert.ok(grants.length >= 1, "expected at least one grant on the wire");
     for (const g of grants) {
@@ -186,7 +187,7 @@ rules:
       );
     }
     const revokeCalls = calls.filter((c) => /\/v1\/revocations$/.test(c.url));
-    assert.equal(revokeCalls.length, 1, "expected 1 revoke call for the parent capability");
+    assert.equal(revokeCalls.length, 0, "bond must not manufacture an attenuation");
   } finally {
     globalThis.fetch = originalFetch;
     delete process.env.CHIO_SERVICE_TOKEN;

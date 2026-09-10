@@ -91,7 +91,7 @@ export class ChioCli {
       ? args
       : [...args, "--format", "json"];
     const result = await this.run(withJsonFlag, options);
-    if (result.exitCode !== 0 && result.stdout.trim().length === 0) {
+    if (result.exitCode !== 0) {
       throw new CliError(
         `chio ${args.join(" ")} exited ${result.exitCode}`,
         result.exitCode,

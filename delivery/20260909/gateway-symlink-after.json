@@ -1,0 +1,128 @@
+{
+  "artifact": "/tmp/chio-staged-packaging/chio-bridge-0.3.0.tgz",
+  "sha256": "4f78380c16416890c40edfdfaac20329414a0f6b3076dfe1834885528565c2d6",
+  "consumer": "/var/folders/jy/95wms_mn265f0bpj_v6wc4zh0000gn/T/chio-packaged-cli-symlink-W6qMsl/consumer",
+  "alias": "/var/folders/jy/95wms_mn265f0bpj_v6wc4zh0000gn/T/chio-packaged-cli-symlink-W6qMsl/symlink-parent",
+  "offline": true,
+  "emptyCache": true,
+  "registry": "http://127.0.0.1:9",
+  "protectedCalls": 0,
+  "cases": [
+    {
+      "entry": "node_modules/@chio/bridge/dist/gateway.js",
+      "flags": [],
+      "exit": 0,
+      "replies": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {
+              "tools": {}
+            },
+            "serverInfo": {
+              "name": "chio-mcp-gateway",
+              "version": "0.3.0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "result": {
+            "tools": [
+              {
+                "name": "read_file",
+                "inputSchema": {
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "entry": "node_modules/@chio/bridge/dist/gateway.js",
+      "flags": [
+        "--preserve-symlinks-main"
+      ],
+      "exit": 0,
+      "replies": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {
+              "tools": {}
+            },
+            "serverInfo": {
+              "name": "chio-mcp-gateway",
+              "version": "0.3.0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "result": {
+            "tools": [
+              {
+                "name": "read_file",
+                "inputSchema": {
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "entry": "node_modules/.bin/chio-mcp-gateway",
+      "flags": [],
+      "exit": 0,
+      "replies": [
+        {
+          "jsonrpc": "2.0",
+          "id": 1,
+          "result": {
+            "protocolVersion": "2025-11-25",
+            "capabilities": {
+              "tools": {}
+            },
+            "serverInfo": {
+              "name": "chio-mcp-gateway",
+              "version": "0.3.0"
+            }
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "id": 2,
+          "result": {
+            "tools": [
+              {
+                "name": "read_file",
+                "inputSchema": {
+                  "type": "object"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "entry": "node_modules/.bin/chio-mcp-gateway",
+      "flags": [
+        "--preserve-symlinks-main"
+      ],
+      "exit": 1,
+      "status": "unsupported Node flag combination: bin symlink is preserved so relative and nested package imports resolve from .bin",
+      "protectedCalls": 0
+    }
+  ]
+}

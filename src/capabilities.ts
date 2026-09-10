@@ -84,23 +84,8 @@ export async function issueCapability(
   return issued;
 }
 
-/**
- * Attenuate a capability to a narrower scope or budget.
- *
- * The arc trust plane on this build has NO `/v1/capabilities/<id>/attenuate`
- * route. (We grepped `arc/crates/chio-cli/src/trust_control/` for
- * `attenuat`: only the `validate_attenuation` core type machinery exists,
- * never bound to an HTTP handler.) The bridge therefore implements
- * attenuation as a two-step `issue-narrower-then-revoke-old` semantic:
- *
- *   1. POST `/v1/capabilities/issue` with the narrower scope/budget,
- *      yielding a fresh `CapabilityToken` (new id, new subject key).
- *   2. POST `/v1/revocations` with the *old* capability id.
- *
- * Best-effort atomicity: if (2) fails after (1) succeeds, the bridge
- * still returns the new token and surfaces the revocation error in a
- * `ChioBridgeError` so the operator can retry or hand-revoke. Documented
- * in `README.md` under "Attenuation semantics".
+/** Administrative reissuance is not attenuation. This operation remains disabled
+ * until a verified parent-bound endpoint preserves scope and aggregate budgets.
  */
 export async function attenuateCapability(
   daemon: DaemonClient | undefined,
@@ -113,33 +98,10 @@ export async function attenuateCapability(
     );
   }
 
-  // Step 1: issue narrower capability.
-  const scope = (delta.scope ?? {}) as IssueCapabilityInput["scope"];
-  const issueInput: IssueCapabilityInput = {
-    scope,
-  };
-  if (delta.subjectPublicKey) issueInput.subjectPublicKey = delta.subjectPublicKey;
-  if (delta.ttlSeconds !== undefined) issueInput.ttlSeconds = delta.ttlSeconds;
-  const newToken = await issueCapability(daemon, issueInput);
-
-  // Step 2: revoke the old capability.
-  // Wire path: POST /v1/revocations with `{capabilityId}` (camelCase via
-  // `serde(rename_all="camelCase")` on RevokeCapabilityRequest at
-  // `arc/crates/chio-cli/src/trust_control/config_and_public.rs:1-5`).
-  const revokeRes = await daemon.trust<{ capabilityId?: string; revoked?: boolean; error?: string }>(
-    "POST",
-    "/v1/revocations",
-    { capabilityId: capabilityId },
+  throw new ChioBridgeError(
+    "unsupported_authority_operation",
+    "attenuation requires a verified parent-bound kernel endpoint; administrative issue-then-revoke does not prove narrowing or preserve budget lineage",
   );
-  if (!revokeRes.ok) {
-    const err = (revokeRes.data as { error?: string })?.error ?? revokeRes.raw.slice(0, 300);
-    throw new ChioBridgeError(
-      "attenuation_partial",
-      `attenuation issued new capability ${(newToken as { id?: string }).id ?? "<unknown>"} but failed to revoke old ${capabilityId}: HTTP ${revokeRes.status}: ${err}`,
-      { newToken, oldCapabilityId: capabilityId },
-    );
-  }
-  return newToken;
 }
 
 function resolveTtlSeconds(ttl: string | undefined, ttlSeconds: number | undefined): number {
@@ -240,28 +202,8 @@ export async function attenuateCapabilityViaHttp(
   capabilityId: string,
   delta: AttenuationDelta & { scope?: IssueCapabilityInput["scope"] },
 ): Promise<IssuedCapabilityToken> {
-  const scope = (delta.scope ?? {}) as IssueCapabilityInput["scope"];
-  const issueInput: IssueCapabilityInput = { scope };
-  if (delta.subjectPublicKey) issueInput.subjectPublicKey = delta.subjectPublicKey;
-  if (delta.ttlSeconds !== undefined) issueInput.ttlSeconds = delta.ttlSeconds;
-  const newToken = await issueCapabilityViaHttp(trustUrl, token, issueInput);
-
-  // Best-effort revoke the parent. The trust plane may reject
-  // unknown ids with a 4xx — we swallow the error because the
-  // narrower capability is already issued and the caller now holds its
-  // id.
-  const revokeUrl = `${trustUrl.replace(/\/$/, "")}/v1/revocations`;
-  try {
-    await fetch(revokeUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ capabilityId }),
-    });
-  } catch {
-    // swallow
-  }
-  return newToken;
+  throw new ChioBridgeError(
+    "unsupported_authority_operation",
+    "attenuation requires a verified parent-bound kernel endpoint; administrative issue-then-revoke is disabled",
+  );
 }

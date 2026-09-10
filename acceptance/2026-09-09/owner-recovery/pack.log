@@ -1,0 +1,5 @@
+
+> @chio/bridge@0.3.0 build
+> tsc
+
+{"name":"@chio/bridge","version":"0.3.0","artifact":"/tmp/chio-bridge-owner-recovery-package-20260909/chio-bridge-0.3.0.tgz","sha256":"02a0e4ad4e61ffb989302cae8774a9ae9ab8f647473f1926d1e671673169a37b","bundled":["@chio-protocol/sdk","yaml","zod"]}

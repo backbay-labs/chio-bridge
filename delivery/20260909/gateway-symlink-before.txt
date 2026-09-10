@@ -1,0 +1,30 @@
+✖ gateway CLI initializes through a symlinked parent with either Node entrypoint mode (113.4895ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 343.759333
+
+✖ failing tests:
+
+test at test/gateway.test.ts:114:1
+✖ gateway CLI initializes through a symlinked parent with either Node entrypoint mode (113.4895ms)
+  AssertionError [ERR_ASSERTION]: CLI must respond instead of silently returning after a symlinked invocation
+  
+  0 !== 2
+  
+      at TestContext.<anonymous> (file:///Users/connor/Medica/backbay/standalone/chio-bridge/.worktrees/required-agent-integrations-20260909/test/gateway.test.ts:133:14)
+      at Test.runInAsyncScope (node:async_hooks:212:14)
+      at Test.run (node:internal/test_runner/test:1109:25)
+      at Test.start (node:internal/test_runner/test:1006:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 2,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

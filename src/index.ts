@@ -17,6 +17,7 @@ import {
   parseReceipt,
   streamReceipts,
   verifyReceiptValue,
+  type ExportEvidenceOptions,
 } from "./receipts.js";
 import { ChioBridgeError, NotInitializedError } from "./errors.js";
 import {
@@ -88,125 +89,35 @@ export class ChioBridge {
       );
     }
     const createOpts: CreatePassportOptions = {};
+    if (opts.subjectPublicKey !== undefined) createOpts.subjectPublicKey = opts.subjectPublicKey;
     if (opts.ttl) createOpts.ttl = opts.ttl;
     if (this.receiptDbPath) createOpts.receiptDbPath = this.receiptDbPath;
     const passport = await createPassport(this.daemon, this.cli, createOpts);
 
-    // Wave D Bug 1: bond() in CLI mode previously returned
-    // capabilityId: "" because the attenuate path was gated on
-    // `this.daemon && opts.capabilityId`. Fix: always derive a
-    // capability scope from the policy's `rules.tool_access.allow` list
-    // and issue a real capability bound to the passport subject, then
-    // attenuate to the requested budget. Daemon mode uses
-    // DaemonClient; CLI mode talks to the trust plane directly over
-    // HTTP using env-derived credentials (CHIO_SERVICE_TOKEN /
-    // CHIO_TOKEN + CHIO_TRUST_URL), which the harness always exposes.
-    // When neither path can reach the trust plane, bond() still
-    // returns a valid passport with capabilityId: "" so older
-    // smoke-test fixtures keep passing.
+    if (opts.capabilityId) {
+      throw new ChioBridgeError("unsupported_authority_operation", "bond cannot attenuate an existing capability without a verified parent-bound kernel endpoint");
+    }
+    if (opts.budgetUsd !== undefined && (!Number.isFinite(opts.budgetUsd) || opts.budgetUsd <= 0)) {
+      throw new ChioBridgeError("invalid_arg", "budgetUsd must be finite and positive");
+    }
     const scope = deriveCapabilityScopeFromPolicy(policy, opts.budgetUsd);
-    const subjectPublicKey = passport.subjectPublicKey;
-    const ttlSeconds = parseTtlSeconds(opts.ttl);
-
+    const input: IssueCapabilityInput = {
+      scope,
+      subjectPublicKey: passport.subjectPublicKey,
+      ttlSeconds: parseTtlSeconds(opts.ttl),
+    };
+    let issued: IssuedCapabilityToken;
     if (this.daemon) {
-      // Daemon mode: issue via the authoritative daemon client, then
-      // optionally attenuate if a caller-supplied capability id was
-      // passed (legacy compat).
-      let issued: IssuedCapabilityToken | undefined;
-      let issueError: unknown;
-      try {
-        const input: IssueCapabilityInput = { scope, ttlSeconds };
-        if (subjectPublicKey) input.subjectPublicKey = subjectPublicKey;
-        issued = await issueCapability(this.daemon, input);
-      } catch (err) {
-        issueError = err;
-        issued = undefined;
-      }
-      if (!issued && issueError && process.env.CHIO_BRIDGE_DEBUG) {
-        process.stderr.write(
-          `[chio-bridge] bond(): issueCapability failed: ${(issueError as Error).message}\n`,
-        );
-      }
-      let currentCapabilityId = issued?.id as string | undefined;
-
-      if (opts.capabilityId) {
-        // Legacy path: caller pre-issued a capability and asked us to
-        // attenuate it to their budget. Keep this behavior intact.
-        const delta: AttenuationDelta = {};
-        if (opts.budgetUsd !== undefined) delta.budget = { maxUsd: opts.budgetUsd };
-        if (Object.keys(delta).length > 0) {
-          try {
-            const token = await attenuateCapability(
-              this.daemon,
-              opts.capabilityId,
-              delta,
-            );
-            const reissued =
-              (token as unknown as { id?: string; capability_id?: string }).id ??
-              (token as unknown as { capability_id?: string }).capability_id;
-            currentCapabilityId =
-              typeof reissued === "string" && reissued.length > 0
-                ? reissued
-                : opts.capabilityId;
-          } catch {
-            currentCapabilityId = opts.capabilityId;
-          }
-        } else {
-          currentCapabilityId = opts.capabilityId;
-        }
-      }
-      if (typeof currentCapabilityId === "string" && currentCapabilityId.length > 0) {
-        passport.capabilityId = currentCapabilityId;
-      }
-      return passport;
+      issued = await issueCapability(this.daemon, input);
+    } else {
+      const token = process.env.CHIO_SERVICE_TOKEN ?? process.env.CHIO_TOKEN;
+      if (!token) throw new ChioBridgeError("bond_failed", "bond requires a trust-plane token for capability issuance");
+      issued = await issueCapabilityViaHttp(process.env.CHIO_TRUST_URL ?? DEFAULT_TRUST_URL, token, input);
     }
-
-    // CLI mode: reach the trust plane directly over HTTP.
-    const token =
-      process.env.CHIO_SERVICE_TOKEN ??
-      process.env.CHIO_TOKEN ??
-      undefined;
-    const trustUrl =
-      process.env.CHIO_TRUST_URL ??
-      DEFAULT_TRUST_URL;
-    if (!token) {
-      // No trust plane reachable — return the passport with empty
-      // capabilityId. The plugin's fail-closed PreToolUse path will
-      // then refuse tool calls until a real bond lands.
-      return passport;
+    if (typeof issued.id !== "string" || !issued.id) {
+      throw new ChioBridgeError("bond_failed", "trust plane did not return a capability id");
     }
-    try {
-      const issued = await issueCapabilityViaHttp(trustUrl, token, {
-        subjectPublicKey,
-        scope,
-        ttlSeconds,
-      });
-      let finalId = (issued as { id?: string }).id;
-      if (finalId && opts.budgetUsd !== undefined) {
-        // Attenuate to the requested budget cap. The trust plane has no
-        // `/attenuate` route (see capabilities.ts); we mirror the
-        // daemon-mode `issue-narrower-then-revoke-old` semantic over
-        // HTTP so the returned capability id carries the budget.
-        const narrower = await attenuateCapabilityViaHttp(
-          trustUrl,
-          token,
-          finalId,
-          {
-            scope: narrowerScopeWithBudget(scope, opts.budgetUsd),
-            ...(subjectPublicKey ? { subjectPublicKey } : {}),
-            ttlSeconds,
-          },
-        );
-        finalId = (narrower as { id?: string }).id ?? finalId;
-      }
-      if (typeof finalId === "string" && finalId.length > 0) {
-        passport.capabilityId = finalId;
-      }
-    } catch {
-      // Best-effort: CLI bond still returns a valid passport when the
-      // trust plane refuses issuance. The plugin layer treats empty
-      // capabilityId as "no budget binding" and degrades gracefully.
-    }
+    passport.capabilityId = issued.id;
     return passport;
   }
 
@@ -366,7 +277,7 @@ export class ChioBridge {
     return verifyReceiptValue(r);
   }
 
-  exportEvidence(opts: { since: Date; until?: Date; outPath: string }): Promise<string> {
+  exportEvidence(opts: ExportEvidenceOptions): Promise<string> {
     return exportEvidence(this.daemon, opts);
   }
 
@@ -625,8 +536,13 @@ export type {
 
 export { loadPolicy, lintPolicy } from "./policy.js";
 export { parseReceipt, verifyReceiptValue } from "./receipts.js";
+export type { ExportEvidenceOptions, ReceiptReadBoundary } from "./receipts.js";
 export type { WrapMcpOptions } from "./mcp.js";
 export type { VerifyPassportInput } from "./passport.js";
 
 export { ChioClient, ChioSession, ReceiptQueryClient } from "@chio-protocol/sdk";
 export type { ChioReceipt, CapabilityToken } from "@chio-protocol/sdk/invariants";
+
+export { createMcpExecutionClient, verifyBoundReceipt, verifyCompletedOutcome, verifyReceivedOutcome } from "./execution.js";
+export { startGatewayHttp } from "./gateway-http.js";
+export type { McpExecutionOptions, ExecutionRequest, ExecutionOutcome, ReceiptBinding, DelegatedSessionBinding, SessionValidation, DeliveryAcknowledgement, AcknowledgementResult } from "./execution.js";

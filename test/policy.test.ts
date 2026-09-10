@@ -7,9 +7,9 @@ import { lintPolicy, loadPolicy, parsePolicy } from "../dist/policy.js";
 import { HUSHSPEC_SUPPORTED_VERSION } from "../dist/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const ARC_EXAMPLES = resolve(__dirname, "../../arc/examples/policies");
+const ARC_EXAMPLES = resolve(__dirname, "fixtures");
 
-test("loadPolicy parses arc canonical-hushspec.yaml", async () => {
+test("loadPolicy parses vendored canonical-hushspec.yaml", async () => {
   const p = resolve(ARC_EXAMPLES, "canonical-hushspec.yaml");
   const policy = await loadPolicy(p);
   assert.equal(policy.hushspec, HUSHSPEC_SUPPORTED_VERSION);

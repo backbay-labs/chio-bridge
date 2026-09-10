@@ -1,0 +1,541 @@
+[
+  {
+    "name": "discovery",
+    "passed": true,
+    "inventory": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "tools": [
+          {
+            "name": "read_text_file",
+            "description": "Read Text File\n\nRead the complete contents of a file from the file system as text. Handles various text encodings and provides detailed error messages if the file cannot be read. Use this tool when you need to examine the contents of a single file. Use the 'head' parameter to read only the first N lines of a file, or the 'tail' parameter to read only the last N lines of a file. Operates on the file as text regardless of extension. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "head": {
+                  "description": "If provided, returns only the first N lines of the file",
+                  "type": "number"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "tail": {
+                  "description": "If provided, returns only the last N lines of the file",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "write_file",
+            "description": "Write File\n\nCreate a new file or completely overwrite an existing file with new content. Use with caution as it will overwrite existing files without warning. Handles text content with proper encoding. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "content": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "content"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "edit_file",
+            "description": "Edit File\n\nMake line-based edits to a text file. Each edit replaces exact line sequences with new content. Returns a git-style diff showing the changes made. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "dryRun": {
+                  "default": false,
+                  "description": "Preview changes using git-style diff format",
+                  "type": "boolean"
+                },
+                "edits": {
+                  "items": {
+                    "properties": {
+                      "newText": {
+                        "description": "Text to replace with",
+                        "type": "string"
+                      },
+                      "oldText": {
+                        "description": "Text to search for - must match exactly",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "oldText",
+                      "newText"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "edits"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "list_directory",
+            "description": "List Directory\n\nGet a detailed listing of all files and directories in a specified path. Results clearly distinguish between files and directories with [FILE] and [DIR] prefixes. This tool is essential for understanding directory structure and finding specific files within a directory. Only works within allowed directories.",
+            "inputSchema": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "name": "chio_resume",
+            "description": "Explicitly resume one exact operator-approved proposal, retaining its original request identity. Never retries an unknown effect.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "requestId": {
+                  "type": "string"
+                },
+                "tool": {
+                  "type": "string"
+                },
+                "arguments": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "requestId",
+                "tool",
+                "arguments"
+              ],
+              "additionalProperties": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "pending-no-dispatch",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"awaiting_approval\",\"evidence\":\"unverified\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"proposal\":{\"session_id\":\"f8a381f146eeb6ecb587c0008fc1005a3e57ebb479dc64d265b72f02ae5d7b33\",\"capability_id\":\"cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8\",\"request_id\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"tool_name\":\"write_file\",\"arguments\":{\"content\":\"actual approval effect\\n\",\"path\":\"/workspace/bridge-approval.txt\"},\"purpose\":\"Review exact qualification content\",\"ttl_seconds\":300},\"reason\":\"proposal retained without dispatch; operator decision and explicit chio_resume are required\"}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "awaiting_approval",
+      "evidence": "unverified",
+      "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+      "proposal": {
+        "session_id": "f8a381f146eeb6ecb587c0008fc1005a3e57ebb479dc64d265b72f02ae5d7b33",
+        "capability_id": "cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8",
+        "request_id": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+        "tool_name": "write_file",
+        "arguments": {
+          "content": "actual approval effect\n",
+          "path": "/workspace/bridge-approval.txt"
+        },
+        "purpose": "Review exact qualification content",
+        "ttl_seconds": 300
+      },
+      "reason": "proposal retained without dispatch; operator decision and explicit chio_resume are required"
+    },
+    "resource": {
+      "files": {
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": []
+    }
+  },
+  {
+    "name": "explicit-approved-resume",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "isError": false,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"completed\",\"evidence\":\"verified\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"receipt\":{\"action\":{\"parameter_hash\":\"94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81\",\"parameters\":{\"content\":\"actual approval effect\\n\",\"path\":\"/workspace/bridge-approval.txt\"}},\"boundary_class\":\"prevent\",\"capability_id\":\"cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8\",\"content_hash\":\"e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b\",\"decision\":{\"verdict\":\"allow\"},\"id\":\"13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3\",\"kernel_key\":\"60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7\",\"metadata\":{\"admission_operation\":{\"compensation_status\":\"not_compensated\",\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"operation_id\":\"173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"projected_dispatch_state\":\"terminal\",\"projected_operation_version\":8,\"projected_state\":\"completed\",\"request_binding_hash\":\"1958e7306dce6a92c3a027c4da9a56c22d19d34d589e781bb6b4b4f667f7d99c\",\"request_id\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"request_namespace_digest\":\"320cf4567bfd494edee7f4632cc347f863efd08c5cc02040fef3d50c92141408\",\"retained_dispatch_commit\":{\"committed_version\":6,\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"provider_attempt\":{\"attempt_id\":\"attempt:173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"operation_id\":\"173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"transport_id\":\"kernel-tool-server:fs\",\"transport_key_epoch\":1},\"store_fence\":{\"lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"owner_epoch\":1,\"store_uuid\":\"01a08756-5083-7b81-9416-4903db92ab85\"}},\"schema\":\"chio.admission-receipt.v1\",\"store_fence\":{\"lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"owner_epoch\":1,\"store_uuid\":\"01a08756-5083-7b81-9416-4903db92ab85\"},\"tool_outcome_id\":\"31a984fb768e4ce0d377a9f786ffb93506cb1a44f6a996fccbc18f667f93c1de\",\"tool_outcome_version\":2,\"trusted_time_unix_ms\":1788977123631},\"attribution\":{\"delegation_depth\":0,\"grant_index\":0,\"issuer_key\":\"573c1442c3f1375449805d3ba6930b2fbe3641416c33df7e5689f817933b3d3f\",\"subject_key\":\"9fb38a716adca3c75514d3bc760322eee1b2b451541ac8e59efb7b33f3072b8a\"},\"chio_receipt_signing_nonce\":\"rcpt-01a08758-919e-7643-9e0c-15ccb5509b16\",\"governed_transaction\":{\"approval\":{\"approval_artifact_digest\":\"e42291e7184871d996b1b1634c939d1d1627164cdff4af48122b89d34d549e3b\",\"approved\":true,\"approver_key\":\"60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7\",\"token_id\":\"approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71-decision\"},\"intent_hash\":\"1987486dd3790ba7c0a7c3b08b7736ba3df5ece177cc02475717cfa4ebebb40d\",\"intent_id\":\"approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71\",\"purpose\":\"Review exact qualification content\",\"server_id\":\"fs\",\"tool_name\":\"write_file\"},\"receipt_context\":{\"request_id\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\"}},\"policy_hash\":\"87d539811ec4526164a6bcd7274c2728f7a766e78654cc0409f35eae5db0b201\",\"receipt_kind\":\"mediated_decision\",\"redaction_mode\":\"none\",\"signature\":\"bb88bc9043d209472b5eaf477726f65ee6688ae35325e33ad5b06afd8fdf7c61f95c21178d8dd7d8af9eefcb964848b6f89a18d9bfad87571a4bc4ebdd2fab01\",\"timestamp\":1788977123,\"tool_name\":\"write_file\",\"tool_origin\":\"caller_executed\",\"tool_server\":\"fs\",\"trust_level\":\"mediated\"},\"result\":{\"content\":[{\"text\":\"Successfully wrote to /workspace/bridge-approval.txt\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"content\":\"Successfully wrote to /workspace/bridge-approval.txt\"}},\"delivery\":{\"acknowledgement\":\"9uIOngdKqNQktI20q74F1oEJ_178eLacBK4-IOqTGKs\",\"receiptId\":\"13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3\",\"requestHash\":\"f2a8cfc803b25d8840eff35368edd7bbef58f34f03c26213b9ac3e04c488cf9b\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"resultHash\":\"e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b\",\"schema\":\"chio.mcp.delivery-ack.v1\"}}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "completed",
+      "evidence": "verified",
+      "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+      "receipt": {
+        "action": {
+          "parameter_hash": "94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81",
+          "parameters": {
+            "content": "actual approval effect\n",
+            "path": "/workspace/bridge-approval.txt"
+          }
+        },
+        "boundary_class": "prevent",
+        "capability_id": "cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8",
+        "content_hash": "e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b",
+        "decision": {
+          "verdict": "allow"
+        },
+        "id": "13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3",
+        "kernel_key": "60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7",
+        "metadata": {
+          "admission_operation": {
+            "compensation_status": "not_compensated",
+            "coordinator_lease_epoch": 1,
+            "coordinator_lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+            "operation_id": "173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+            "projected_dispatch_state": "terminal",
+            "projected_operation_version": 8,
+            "projected_state": "completed",
+            "request_binding_hash": "1958e7306dce6a92c3a027c4da9a56c22d19d34d589e781bb6b4b4f667f7d99c",
+            "request_id": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+            "request_namespace_digest": "320cf4567bfd494edee7f4632cc347f863efd08c5cc02040fef3d50c92141408",
+            "retained_dispatch_commit": {
+              "committed_version": 6,
+              "coordinator_lease_epoch": 1,
+              "coordinator_lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+              "provider_attempt": {
+                "attempt_id": "attempt:173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+                "operation_id": "173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+                "transport_id": "kernel-tool-server:fs",
+                "transport_key_epoch": 1
+              },
+              "store_fence": {
+                "lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+                "owner_epoch": 1,
+                "store_uuid": "01a08756-5083-7b81-9416-4903db92ab85"
+              }
+            },
+            "schema": "chio.admission-receipt.v1",
+            "store_fence": {
+              "lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+              "owner_epoch": 1,
+              "store_uuid": "01a08756-5083-7b81-9416-4903db92ab85"
+            },
+            "tool_outcome_id": "31a984fb768e4ce0d377a9f786ffb93506cb1a44f6a996fccbc18f667f93c1de",
+            "tool_outcome_version": 2,
+            "trusted_time_unix_ms": 1788977123631
+          },
+          "attribution": {
+            "delegation_depth": 0,
+            "grant_index": 0,
+            "issuer_key": "573c1442c3f1375449805d3ba6930b2fbe3641416c33df7e5689f817933b3d3f",
+            "subject_key": "9fb38a716adca3c75514d3bc760322eee1b2b451541ac8e59efb7b33f3072b8a"
+          },
+          "chio_receipt_signing_nonce": "rcpt-01a08758-919e-7643-9e0c-15ccb5509b16",
+          "governed_transaction": {
+            "approval": {
+              "approval_artifact_digest": "e42291e7184871d996b1b1634c939d1d1627164cdff4af48122b89d34d549e3b",
+              "approved": true,
+              "approver_key": "60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7",
+              "token_id": "approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71-decision"
+            },
+            "intent_hash": "1987486dd3790ba7c0a7c3b08b7736ba3df5ece177cc02475717cfa4ebebb40d",
+            "intent_id": "approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71",
+            "purpose": "Review exact qualification content",
+            "server_id": "fs",
+            "tool_name": "write_file"
+          },
+          "receipt_context": {
+            "request_id": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b"
+          }
+        },
+        "policy_hash": "87d539811ec4526164a6bcd7274c2728f7a766e78654cc0409f35eae5db0b201",
+        "receipt_kind": "mediated_decision",
+        "redaction_mode": "none",
+        "signature": "bb88bc9043d209472b5eaf477726f65ee6688ae35325e33ad5b06afd8fdf7c61f95c21178d8dd7d8af9eefcb964848b6f89a18d9bfad87571a4bc4ebdd2fab01",
+        "timestamp": 1788977123,
+        "tool_name": "write_file",
+        "tool_origin": "caller_executed",
+        "tool_server": "fs",
+        "trust_level": "mediated"
+      },
+      "result": {
+        "content": [
+          {
+            "text": "Successfully wrote to /workspace/bridge-approval.txt",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "content": "Successfully wrote to /workspace/bridge-approval.txt"
+        }
+      },
+      "delivery": {
+        "acknowledgement": "9uIOngdKqNQktI20q74F1oEJ_178eLacBK4-IOqTGKs",
+        "receiptId": "13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3",
+        "requestHash": "f2a8cfc803b25d8840eff35368edd7bbef58f34f03c26213b9ac3e04c488cf9b",
+        "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+        "resultHash": "e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b",
+        "schema": "chio.mcp.delivery-ack.v1"
+      }
+    },
+    "resource": {
+      "files": {
+        "bridge-approval.txt": "actual approval effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:05:23.647Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-approval.txt",
+          "argumentsSha256": "94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81",
+          "frameSha256": "05a7af6573f96e2bf8be6d96093980b671d6f45ca292e0ef112e4122e3f11930"
+        }
+      ]
+    }
+  },
+  {
+    "name": "completed-resume-no-redispatch",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "result": {
+        "isError": false,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"completed\",\"evidence\":\"verified\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"receipt\":{\"action\":{\"parameter_hash\":\"94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81\",\"parameters\":{\"content\":\"actual approval effect\\n\",\"path\":\"/workspace/bridge-approval.txt\"}},\"boundary_class\":\"prevent\",\"capability_id\":\"cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8\",\"content_hash\":\"e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b\",\"decision\":{\"verdict\":\"allow\"},\"id\":\"13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3\",\"kernel_key\":\"60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7\",\"metadata\":{\"admission_operation\":{\"compensation_status\":\"not_compensated\",\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"operation_id\":\"173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"projected_dispatch_state\":\"terminal\",\"projected_operation_version\":8,\"projected_state\":\"completed\",\"request_binding_hash\":\"1958e7306dce6a92c3a027c4da9a56c22d19d34d589e781bb6b4b4f667f7d99c\",\"request_id\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"request_namespace_digest\":\"320cf4567bfd494edee7f4632cc347f863efd08c5cc02040fef3d50c92141408\",\"retained_dispatch_commit\":{\"committed_version\":6,\"coordinator_lease_epoch\":1,\"coordinator_lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"provider_attempt\":{\"attempt_id\":\"attempt:173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"operation_id\":\"173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0\",\"transport_id\":\"kernel-tool-server:fs\",\"transport_key_epoch\":1},\"store_fence\":{\"lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"owner_epoch\":1,\"store_uuid\":\"01a08756-5083-7b81-9416-4903db92ab85\"}},\"schema\":\"chio.admission-receipt.v1\",\"store_fence\":{\"lease_id\":\"01a08756-5188-7d32-880e-c798d1b16ca5\",\"owner_epoch\":1,\"store_uuid\":\"01a08756-5083-7b81-9416-4903db92ab85\"},\"tool_outcome_id\":\"31a984fb768e4ce0d377a9f786ffb93506cb1a44f6a996fccbc18f667f93c1de\",\"tool_outcome_version\":2,\"trusted_time_unix_ms\":1788977123631},\"attribution\":{\"delegation_depth\":0,\"grant_index\":0,\"issuer_key\":\"573c1442c3f1375449805d3ba6930b2fbe3641416c33df7e5689f817933b3d3f\",\"subject_key\":\"9fb38a716adca3c75514d3bc760322eee1b2b451541ac8e59efb7b33f3072b8a\"},\"chio_receipt_signing_nonce\":\"rcpt-01a08758-919e-7643-9e0c-15ccb5509b16\",\"governed_transaction\":{\"approval\":{\"approval_artifact_digest\":\"e42291e7184871d996b1b1634c939d1d1627164cdff4af48122b89d34d549e3b\",\"approved\":true,\"approver_key\":\"60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7\",\"token_id\":\"approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71-decision\"},\"intent_hash\":\"1987486dd3790ba7c0a7c3b08b7736ba3df5ece177cc02475717cfa4ebebb40d\",\"intent_id\":\"approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71\",\"purpose\":\"Review exact qualification content\",\"server_id\":\"fs\",\"tool_name\":\"write_file\"},\"receipt_context\":{\"request_id\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\"}},\"policy_hash\":\"87d539811ec4526164a6bcd7274c2728f7a766e78654cc0409f35eae5db0b201\",\"receipt_kind\":\"mediated_decision\",\"redaction_mode\":\"none\",\"signature\":\"bb88bc9043d209472b5eaf477726f65ee6688ae35325e33ad5b06afd8fdf7c61f95c21178d8dd7d8af9eefcb964848b6f89a18d9bfad87571a4bc4ebdd2fab01\",\"timestamp\":1788977123,\"tool_name\":\"write_file\",\"tool_origin\":\"caller_executed\",\"tool_server\":\"fs\",\"trust_level\":\"mediated\"},\"result\":{\"content\":[{\"text\":\"Successfully wrote to /workspace/bridge-approval.txt\",\"type\":\"text\"}],\"isError\":false,\"structuredContent\":{\"content\":\"Successfully wrote to /workspace/bridge-approval.txt\"}},\"delivery\":{\"acknowledgement\":\"9uIOngdKqNQktI20q74F1oEJ_178eLacBK4-IOqTGKs\",\"receiptId\":\"13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3\",\"requestHash\":\"f2a8cfc803b25d8840eff35368edd7bbef58f34f03c26213b9ac3e04c488cf9b\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b\",\"resultHash\":\"e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b\",\"schema\":\"chio.mcp.delivery-ack.v1\"}}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "completed",
+      "evidence": "verified",
+      "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+      "receipt": {
+        "action": {
+          "parameter_hash": "94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81",
+          "parameters": {
+            "content": "actual approval effect\n",
+            "path": "/workspace/bridge-approval.txt"
+          }
+        },
+        "boundary_class": "prevent",
+        "capability_id": "cap-01a08756-ec65-75b0-b87c-0eb78bfa6df8",
+        "content_hash": "e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b",
+        "decision": {
+          "verdict": "allow"
+        },
+        "id": "13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3",
+        "kernel_key": "60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7",
+        "metadata": {
+          "admission_operation": {
+            "compensation_status": "not_compensated",
+            "coordinator_lease_epoch": 1,
+            "coordinator_lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+            "operation_id": "173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+            "projected_dispatch_state": "terminal",
+            "projected_operation_version": 8,
+            "projected_state": "completed",
+            "request_binding_hash": "1958e7306dce6a92c3a027c4da9a56c22d19d34d589e781bb6b4b4f667f7d99c",
+            "request_id": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+            "request_namespace_digest": "320cf4567bfd494edee7f4632cc347f863efd08c5cc02040fef3d50c92141408",
+            "retained_dispatch_commit": {
+              "committed_version": 6,
+              "coordinator_lease_epoch": 1,
+              "coordinator_lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+              "provider_attempt": {
+                "attempt_id": "attempt:173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+                "operation_id": "173662f1ed414c18234652153d9204fff0fa448dc8c768049b7ae12c676972a0",
+                "transport_id": "kernel-tool-server:fs",
+                "transport_key_epoch": 1
+              },
+              "store_fence": {
+                "lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+                "owner_epoch": 1,
+                "store_uuid": "01a08756-5083-7b81-9416-4903db92ab85"
+              }
+            },
+            "schema": "chio.admission-receipt.v1",
+            "store_fence": {
+              "lease_id": "01a08756-5188-7d32-880e-c798d1b16ca5",
+              "owner_epoch": 1,
+              "store_uuid": "01a08756-5083-7b81-9416-4903db92ab85"
+            },
+            "tool_outcome_id": "31a984fb768e4ce0d377a9f786ffb93506cb1a44f6a996fccbc18f667f93c1de",
+            "tool_outcome_version": 2,
+            "trusted_time_unix_ms": 1788977123631
+          },
+          "attribution": {
+            "delegation_depth": 0,
+            "grant_index": 0,
+            "issuer_key": "573c1442c3f1375449805d3ba6930b2fbe3641416c33df7e5689f817933b3d3f",
+            "subject_key": "9fb38a716adca3c75514d3bc760322eee1b2b451541ac8e59efb7b33f3072b8a"
+          },
+          "chio_receipt_signing_nonce": "rcpt-01a08758-919e-7643-9e0c-15ccb5509b16",
+          "governed_transaction": {
+            "approval": {
+              "approval_artifact_digest": "e42291e7184871d996b1b1634c939d1d1627164cdff4af48122b89d34d549e3b",
+              "approved": true,
+              "approver_key": "60c7a52633552743619143892f9d0f994354ad85d49fefdfb0330f08cb7dd9e7",
+              "token_id": "approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71-decision"
+            },
+            "intent_hash": "1987486dd3790ba7c0a7c3b08b7736ba3df5ece177cc02475717cfa4ebebb40d",
+            "intent_id": "approval-1239e3b724d0485cfbb3cf24d86684e935ebdb72feacc1cf7f59591332c2ef71",
+            "purpose": "Review exact qualification content",
+            "server_id": "fs",
+            "tool_name": "write_file"
+          },
+          "receipt_context": {
+            "request_id": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b"
+          }
+        },
+        "policy_hash": "87d539811ec4526164a6bcd7274c2728f7a766e78654cc0409f35eae5db0b201",
+        "receipt_kind": "mediated_decision",
+        "redaction_mode": "none",
+        "signature": "bb88bc9043d209472b5eaf477726f65ee6688ae35325e33ad5b06afd8fdf7c61f95c21178d8dd7d8af9eefcb964848b6f89a18d9bfad87571a4bc4ebdd2fab01",
+        "timestamp": 1788977123,
+        "tool_name": "write_file",
+        "tool_origin": "caller_executed",
+        "tool_server": "fs",
+        "trust_level": "mediated"
+      },
+      "result": {
+        "content": [
+          {
+            "text": "Successfully wrote to /workspace/bridge-approval.txt",
+            "type": "text"
+          }
+        ],
+        "isError": false,
+        "structuredContent": {
+          "content": "Successfully wrote to /workspace/bridge-approval.txt"
+        }
+      },
+      "delivery": {
+        "acknowledgement": "9uIOngdKqNQktI20q74F1oEJ_178eLacBK4-IOqTGKs",
+        "receiptId": "13e8727fcb0d9677e6951d25aeb7522fc3338e9dd9f0daf75f97e3fea956aeb3",
+        "requestHash": "f2a8cfc803b25d8840eff35368edd7bbef58f34f03c26213b9ac3e04c488cf9b",
+        "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a22883e93273fa52419f3f34bb7e1125f2cd14a1f32561e419adc15324916c4b",
+        "resultHash": "e9f0a585ebbcd52f86c6196e960774bab3f55e37a68360ecca4866542b61bc3b",
+        "schema": "chio.mcp.delivery-ack.v1"
+      }
+    }
+  },
+  {
+    "name": "operator-rejection-no-dispatch",
+    "passed": true,
+    "raw": {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "{\"state\":\"not_dispatched\",\"evidence\":\"unverified\",\"requestId\":\"88a8cf8c-fce5-4378-a2e1-102c00a05046:a3c90e3b7448d23d9eacebd0ebf15cae100e21f9b2c688f3f9d238edcd26d67f\",\"reason\":\"operator denied the proposal before dispatch\"}"
+          }
+        ]
+      }
+    },
+    "outcome": {
+      "state": "not_dispatched",
+      "evidence": "unverified",
+      "requestId": "88a8cf8c-fce5-4378-a2e1-102c00a05046:a3c90e3b7448d23d9eacebd0ebf15cae100e21f9b2c688f3f9d238edcd26d67f",
+      "reason": "operator denied the proposal before dispatch"
+    },
+    "resource": {
+      "files": {
+        "bridge-approval.txt": "actual approval effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:05:23.647Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-approval.txt",
+          "argumentsSha256": "94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81",
+          "frameSha256": "05a7af6573f96e2bf8be6d96093980b671d6f45ca292e0ef112e4122e3f11930"
+        }
+      ]
+    }
+  },
+  {
+    "name": "unsupported-resource-route",
+    "passed": true,
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 9,
+      "error": {
+        "code": -32601,
+        "message": "unsupported method"
+      }
+    }
+  },
+  {
+    "name": "closed-transport-no-effect",
+    "passed": true,
+    "resource": {
+      "files": {
+        "bridge-approval.txt": "actual approval effect\n",
+        "forbidden.txt": "independent forbidden observer\n",
+        "secret.txt": "sensitive observer\n"
+      },
+      "dispatch": [
+        {
+          "schema": "chio.resource-dispatch-observation.v1",
+          "processId": 1,
+          "sequence": 1,
+          "observedAt": "2026-09-09T18:05:23.647Z",
+          "upstreamRequestId": 3,
+          "tool": "write_file",
+          "path": "/workspace/bridge-approval.txt",
+          "argumentsSha256": "94a9ded638b773f65e4b8257266451f81bc3655908858f5e5251c95713de8c81",
+          "frameSha256": "05a7af6573f96e2bf8be6d96093980b671d6f45ca292e0ef112e4122e3f11930"
+        }
+      ]
+    }
+  }
+]
