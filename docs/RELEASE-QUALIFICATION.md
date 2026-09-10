@@ -136,3 +136,20 @@ accepted the intended identity and rejected a different package, repository,
 tag, and invalid version. These are local package and workflow checks; hosted
 OIDC signing, SLSA verification, npm publication, and real-host acceptance are
 not claimed by these results.
+
+### Enforced promotion prerequisites
+
+A tag build fails before publication unless the existing `npm` environment has
+at least one configured required reviewer and the latest `ci.yml` push run on
+`main` for the exact tag commit is completed successfully. The publication job
+checks both conditions again after environment review. Missing API access,
+missing environment protection, pending, skipped, cancelled or failed CI is a
+release failure. Configure the environment before creating a release tag; a
+workflow reference alone can otherwise create an unprotected environment.
+
+These checks enforce this repository's source/package CI and reviewer gate.
+They do not establish kernel security or any host acceptance gate. The reviewer
+must separately verify the selected kernel's exact-source CI and Release
+Qualification, immutable artifact identity, and all applicable I01-I08 evidence.
+The workflow does not publish on manual dispatch. No environment or repository
+setting was changed by this local workflow repair.
