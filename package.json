@@ -35,7 +35,8 @@
     "README.md",
     "LICENSE",
     "vendor",
-    "ACCEPTANCE.md"
+    "ACCEPTANCE.md",
+    "docs/assets"
   ],
   "engines": {
     "node": ">=22"
