@@ -138,6 +138,28 @@ tag, and invalid version. These are local package and workflow checks; hosted
 OIDC signing, SLSA verification, npm publication, and real-host acceptance are
 not claimed by these results.
 
+## Source CI
+
+`.github/workflows/ci.yml` uses pinned actions, this checkout's locked and
+vendored dependencies, mandatory source checks, and the same staged packaging
+and clean-consumer commands exercised locally. Existing workflow/job check names
+are retained. No typecheck failure is downgraded to a warning, no real-host test
+is reported successful because credentials are absent, and no legacy normal-home
+smoke cleanup is executed. CI does not publish.
+
+The `test` job also retains `npm run test:live` as a mandatory legacy live API
+regression. It checks out public `backbay-labs/chio` at kernel source
+`d8c5f53705173e614a853bad6c0a85acfdf1212b` and public
+`backbay-labs/chio-test-harness` at
+`05945ccf4f652a22801c9ab35cabf99456ef76c9`. It builds the selected CLI with Cargo's
+lockfile and the kernel's pinned Rust toolchain. The harness uses a new HOME and
+XDG directories; delete denial targets a newly created disposable sentinel and
+checks its contents independently. It never targets a host configuration file.
+The live suite includes legacy compatibility assertions and is not a replacement
+for required-host I01-I08 cases. If this source commit has not reached the public
+mirror, checkout fails; no old public binary is substituted. The owning kernel
+repository's required CI and release qualification remain additional gates.
+
 ### Enforced promotion prerequisites
 
 A tag build fails before publication unless the `npm` environment exists and the latest `ci.yml` push run on
@@ -155,3 +177,44 @@ qualification must separately verify the selected kernel's exact-source CI and R
 Qualification, immutable artifact identity, and all applicable I01-I08 evidence.
 The workflow does not publish on manual dispatch. No environment or repository
 setting was changed by this local workflow repair.
+
+## Live API compatibility qualification
+
+On 2026-09-09 the repaired live suite passed 16 of 16 cases, with zero skips,
+against kernel source `d8c5f53705173e614a853bad6c0a85acfdf1212b`, binary SHA-256
+`33dd1dea21a4ca5ecddeab4f30f6b06b0b90c513f0987aef552b0633d9da1e25`,
+Node 22.19.0, npm 11.8.0, and harness commit
+`05945ccf4f652a22801c9ab35cabf99456ef76c9`. The workspace and HOME were disposable.
+The harness trust process owns durable admission; the MCP process is a remote
+participant with an independent persisted identity.
+
+The suite explicitly executes echo, verifies trusted request-bound receipt and
+claimed output bytes, queries real receipts, creates passports for the explicit
+caller, exercises lifecycle revocation, and starts a wrapped real MCP edge.
+A forbidden delete targets a new disposable sentinel and an independent file
+read confirms the original bytes remain. That capability prefilter response has
+no signed execution envelope, so the negative observation is not an I06 claim.
+
+Legacy behavior removed from the assertions is not supported delivery:
+
+- `check()` is policy evaluation. Full evaluation needs an explicit output
+  fixture and receipt/session stores. Each independent CLI fixture evaluation
+  gets separate state because its fixed request identity must not be reused for
+  different parameters. No tool is dispatched by a check.
+- A fresh passport store cannot manufacture evidence by implicitly calling echo.
+  The caller's exact public key is required; arbitrary latest-subject inference
+  is disabled.
+- Administrative issue-then-revoke is not attenuation. Unsupported attenuation
+  remains disabled and its rejection is exercised.
+- Unbound budget prechecks are rejected by the durable authority. Five zero-cost
+  checks do not establish budget accounting. Actual bound execution budgets
+  require their separate kernel/host cases.
+- Proof-required export rejects uncheckpointed receipts and produces no file.
+  Explicit raw export discloses uncheckpointed coverage and remains unverified
+  until independent signer, request and result verification.
+
+Earlier runs exposed split-database startup rejection, stale effectful precheck
+assumptions, unsupported CLI flag placement, implicit receipt-read scope, missing
+checkpoint coverage, and retained-request conflicts. Their failures are retained
+in the qualification record; none was accepted as a successful effect. This API
+suite is additional CI coverage, not real-host I01-I08 acceptance or public release.

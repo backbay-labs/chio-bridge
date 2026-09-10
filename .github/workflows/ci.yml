@@ -1,82 +1,150 @@
+# Source/package checks are not real-host acceptance. Required I01-I08
+# evidence must be executed separately with the exact delivered artifacts.
+# Keep the legacy live API regression mandatory; it does not prove complete mediation.
 name: ci
-
-on:
+'on':
   push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
-
+    branches:
+    - main
+  pull_request: null
+  workflow_dispatch: null
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+env:
+  PACKAGE_NAME: '@chio/bridge'
+  TZ: UTC
+  LC_ALL: C
 jobs:
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
-      - name: Checkout chio-bridge
-        uses: actions/checkout@v4
-        with:
-          path: chio-bridge
-          submodules: false
-
-      - name: Checkout arc (source of chio)
-        uses: actions/checkout@v4
-        with:
-          # Placeholder: replace owner/arc once the GitHub org is live.
-          repository: owner/arc
-          path: arc
-          ref: main
-
-      - name: Setup chio
-        uses: owner/chio-ci-actions/setup-chio@v0.1.0
-        with:
-          mode: build
-          arc-path: arc
-
-      - name: Install deps
-        working-directory: chio-bridge
-        run: bun install --frozen-lockfile
-
-      - name: Typecheck
-        working-directory: chio-bridge
-        # Wave 5.1 per CLAUDE: tolerate flaky typecheck for now, don't fail CI on it.
-        run: bun run typecheck || echo "typecheck failed (non-blocking in Wave 5.1)"
-
-      - name: Build
-        working-directory: chio-bridge
-        run: bun run build
-
-      - name: Unit tests
-        working-directory: chio-bridge
-        run: bun run test
-
-      - name: Start chio-test-harness
-        # chio-test-harness is a sibling repo in dev; on CI we fetch it next to chio-bridge.
-        uses: actions/checkout@v4
-        with:
-          repository: owner/chio-test-harness
-          path: chio-test-harness
-          ref: main
-
-      - name: Install harness MCP deps
-        working-directory: chio-test-harness/hello-mcp
-        run: bun install --frozen-lockfile
-
-      - name: Boot harness
-        working-directory: chio-test-harness
-        run: bash bin/start.sh
-
-      - name: Live integration tests
-        working-directory: chio-bridge
-        run: bun run test:live
-
-      - name: Stop harness
-        if: always()
-        working-directory: chio-test-harness
-        run: bash bin/stop.sh || true
-
-      - name: Upload harness logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: harness-logs
-          path: chio-test-harness/var/*.log
-          if-no-files-found: ignore
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+        path: chio-bridge
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 22.19.0
+    - name: Pin npm
+      run: npm install --global npm@11.8.0 --ignore-scripts --no-audit --no-fund
+    - name: Install locked dependencies
+      working-directory: chio-bridge
+      run: npm ci --ignore-scripts --no-audit --no-fund
+    - name: Typecheck, build, and unit regressions
+      working-directory: chio-bridge
+      run: |
+        set -euo pipefail
+        rm -rf dist
+        npm run typecheck
+        npm run build
+        npm test
+    - name: Build staged release artifact
+      working-directory: chio-bridge
+      run: |
+        set -euo pipefail
+        npm run pack:release -- "${RUNNER_TEMP}/chio-release"
+    - name: Verify clean consumer installation and packaged entrypoints
+      run: |
+        set -euo pipefail
+        cd "${RUNNER_TEMP}/chio-release"
+        sha256sum --check ./*.sha256
+        artifacts=(./*.tgz)
+        test "${#artifacts[@]}" -eq 1
+        package_artifact="$(realpath "${artifacts[0]}")"
+        consumer_dir="$(mktemp -d "${RUNNER_TEMP}/chio-consumer.XXXXXX")"
+        cache_dir="$(mktemp -d "${RUNNER_TEMP}/chio-empty-cache.XXXXXX")"
+        cd "${consumer_dir}"
+        printf '%s\n' '{"private":true}' > package.json
+        npm install --offline --ignore-scripts --no-audit --no-fund --cache "${cache_dir}" "${package_artifact}"
+        node --input-type=module <<'NODE'
+        import { readFileSync, existsSync, realpathSync } from 'node:fs';
+        import { resolve, relative, isAbsolute } from 'node:path';
+        import { execFileSync } from 'node:child_process';
+        const root = resolve('node_modules', process.env.PACKAGE_NAME);
+        const pkg = JSON.parse(readFileSync(`${root}/package.json`));
+        if (pkg.name !== process.env.PACKAGE_NAME) throw new Error('wrong installed package');
+        if (pkg.scripts) throw new Error('staged release retains lifecycle scripts');
+        for (const version of Object.values(pkg.dependencies ?? {})) {
+          if (/^(file:|link:|workspace:)/.test(version)) throw new Error('unresolved local dependency');
+        }
+        const bins = typeof pkg.bin === 'string' ? [pkg.bin] : Object.values(pkg.bin ?? {});
+        for (const entry of [pkg.main, ...bins].filter(Boolean)) {
+          const target = resolve(root, entry);
+          if (!existsSync(target)) throw new Error(`missing entrypoint ${entry}`);
+          const rel = relative(root, realpathSync(target));
+          if (rel.startsWith('..') || isAbsolute(rel)) throw new Error('entrypoint escapes installed package');
+          execFileSync(process.execPath, ['--check', target], { stdio: 'inherit' });
+        }
+        NODE
+        npm publish "${package_artifact}" --dry-run --ignore-scripts --access public
+    - name: Checkout exact kernel source
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: backbay-labs/chio
+        ref: d8c5f53705173e614a853bad6c0a85acfdf1212b
+        path: kernel
+        persist-credentials: false
+    - name: Checkout public live harness
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      with:
+        repository: backbay-labs/chio-test-harness
+        ref: 05945ccf4f652a22801c9ab35cabf99456ef76c9
+        path: chio-test-harness
+        persist-credentials: false
+    - name: Install kernel build prerequisites
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes protobuf-compiler pkg-config libssl-dev
+    - name: Install pinned Rust toolchain
+      working-directory: kernel
+      run: |
+        rustup toolchain install --profile minimal
+        rustup show active-toolchain
+    - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32
+      with:
+        workspaces: kernel -> target
+    - name: Build exact kernel for legacy live API regression
+      working-directory: kernel
+      run: |
+        set -euo pipefail
+        test "$(git rev-parse HEAD)" = d8c5f53705173e614a853bad6c0a85acfdf1212b
+        cargo build --locked -p chio-cli --bin chio
+        echo "CHIO_BIN=${PWD}/target/debug/chio" >> "${GITHUB_ENV}"
+        sha256sum target/debug/chio
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+      with:
+        bun-version: 1.3.3
+    - name: Install locked public harness dependencies
+      working-directory: chio-test-harness/hello-mcp
+      run: bun install --frozen-lockfile --ignore-scripts
+    - name: Live integration tests
+      working-directory: chio-bridge
+      run: |
+        set -euo pipefail
+        live_home="$(mktemp -d "${RUNNER_TEMP}/chio-live-home.XXXXXX")"
+        export HOME="${live_home}"
+        export XDG_CONFIG_HOME="${live_home}/config"
+        export XDG_DATA_HOME="${live_home}/data"
+        export XDG_STATE_HOME="${live_home}/state"
+        npm run test:live
+    - name: Stop isolated harness
+      if: always()
+      run: if [[ -f chio-test-harness/bin/stop.sh ]]; then bash chio-test-harness/bin/stop.sh; fi
+    - name: Retain live harness logs
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: harness-logs
+        path: chio-test-harness/var/*.log
+        if-no-files-found: ignore
+    - name: Retain qualified package
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      with:
+        name: source-package
+        path: ${{ runner.temp }}/chio-release
+        if-no-files-found: error
