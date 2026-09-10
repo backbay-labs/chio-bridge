@@ -59,7 +59,7 @@ test("bond() fails on empty receipt database without executing bootstrap effects
   );
 
   await assert.rejects(
-    () => bridge.bond({ policyPath, ttl: "1h", budgetUsd: 50 }),
+    () => bridge.bond({ policyPath, subjectPublicKey: "ab".repeat(32), ttl: "1h", budgetUsd: 50 }),
     /no receipts|passport_create_failed/i,
   );
   assert.equal(networkCalls, 0, "passport creation must not execute bootstrap tools");

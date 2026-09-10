@@ -17,6 +17,7 @@ import {
   parseReceipt,
   streamReceipts,
   verifyReceiptValue,
+  type ExportEvidenceOptions,
 } from "./receipts.js";
 import { ChioBridgeError, NotInitializedError } from "./errors.js";
 import {
@@ -88,6 +89,7 @@ export class ChioBridge {
       );
     }
     const createOpts: CreatePassportOptions = {};
+    if (opts.subjectPublicKey !== undefined) createOpts.subjectPublicKey = opts.subjectPublicKey;
     if (opts.ttl) createOpts.ttl = opts.ttl;
     if (this.receiptDbPath) createOpts.receiptDbPath = this.receiptDbPath;
     const passport = await createPassport(this.daemon, this.cli, createOpts);
@@ -275,7 +277,7 @@ export class ChioBridge {
     return verifyReceiptValue(r);
   }
 
-  exportEvidence(opts: { since: Date; until?: Date; outPath: string }): Promise<string> {
+  exportEvidence(opts: ExportEvidenceOptions): Promise<string> {
     return exportEvidence(this.daemon, opts);
   }
 
@@ -534,6 +536,7 @@ export type {
 
 export { loadPolicy, lintPolicy } from "./policy.js";
 export { parseReceipt, verifyReceiptValue } from "./receipts.js";
+export type { ExportEvidenceOptions, ReceiptReadBoundary } from "./receipts.js";
 export type { WrapMcpOptions } from "./mcp.js";
 export type { VerifyPassportInput } from "./passport.js";
 

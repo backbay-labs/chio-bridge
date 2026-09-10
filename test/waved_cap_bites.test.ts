@@ -99,7 +99,7 @@ function makeFakeChioForBond(subjectHex: string): string {
 
 test("Wave D Bug 1: CLI-mode bond() issues a real capability id via direct HTTP to the trust plane", async () => {
   const SUBJECT =
-    "1111222233334444555566667777888899990000aaaabbbbccccddddeeeefff0";
+    "1212121212121212121212121212121212121212121212121212121212121212";
   const CAP_ID_ISSUE = "cap-bond-issue-abc123";
   const CAP_ID_ATTENUATE = "cap-bond-attenuated-xyz789";
 
@@ -155,6 +155,7 @@ rules:
     const bridge = ChioBridge.fromCli({ chioBinary });
     const passport = await bridge.bond({
       policyPath,
+      subjectPublicKey: SUBJECT,
       ttl: "1h",
       budgetUsd: 500,
     });

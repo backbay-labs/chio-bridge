@@ -1,7 +1,7 @@
 import type { ChioReceipt } from "@chio-protocol/sdk/invariants";
 import type { ChioCli } from "./client/cli.js";
 import type { DaemonClient } from "./client/daemon.js";
-import { ChioBridgeError } from "./errors.js";
+import { ChioBridgeError, CliError } from "./errors.js";
 import { DEFAULT_TRUST_URL, type CheckOptions, type ToolCall, type Verdict, type VerdictDecision } from "./types.js";
 
 interface ChioCheckJsonOutput {
@@ -26,6 +26,17 @@ export async function checkCall(
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0) {
     throw new ChioBridgeError("invalid_arg", "timeoutMs must be a positive safe integer");
   }
+  const mode = options.mode ?? "preflight";
+  if ((mode !== "preflight" && mode !== "full") ||
+      (mode === "full" && !options.outputFixturePath) ||
+      (mode === "preflight" && options.outputFixturePath !== undefined)) {
+    throw new ChioBridgeError("invalid_arg", "full check requires outputFixturePath; preflight does not accept an output fixture");
+  }
+  for (const path of [options.outputFixturePath, options.sessionDbPath, options.receiptDbPath]) {
+    if (path !== undefined && (typeof path !== "string" || path.trim().length === 0)) {
+      throw new ChioBridgeError("invalid_arg", "check database and fixture paths must be nonempty strings");
+    }
+  }
   if (options.costUsd !== undefined && (!Number.isFinite(options.costUsd) || options.costUsd < 0)) {
     return { decision: "deny", reason: "invalid costUsd", guard: "budget" };
   }
@@ -33,16 +44,31 @@ export async function checkCall(
     const budget = await mediateBudget(daemon, options, timeoutMs);
     if (budget.decision !== "allow") return budget;
   }
-  const args: string[] = [];
-  const receiptDb = process.env.CHIO_RECEIPT_DB;
+  // --format is a top-level option in the selected CLI. --json is global.
+  const args: string[] = ["--json"];
+  const receiptDb = options.receiptDbPath ?? process.env.CHIO_RECEIPT_DB;
   if (receiptDb) args.push("--receipt-db", receiptDb);
-  args.push("check", "--policy", call.policyPath, "--tool", call.tool, "--params", JSON.stringify(call.params ?? {}));
+  if (options.sessionDbPath) args.push("--session-db", options.sessionDbPath);
+  args.push("check", "--mode", mode, "--policy", call.policyPath, "--tool", call.tool, "--params", JSON.stringify(call.params ?? {}));
+  if (options.outputFixturePath) args.push("--output-fixture", options.outputFixturePath);
   if (call.serverId) args.push("--server", call.serverId);
-  const out = await cli.runJson<ChioCheckJsonOutput>(args, { timeoutMs });
+  const result = await cli.run(args, { timeoutMs });
+  // CLI denial and pending approval deliberately use nonzero exit statuses.
+  // They are usable negative verdicts only when accompanied by valid JSON.
+  if (result.exitCode !== 0 && result.exitCode !== 2 && result.exitCode !== 3) {
+    throw new CliError(`chio check exited ${result.exitCode}`, result.exitCode, result.stderr);
+  }
+  let out: ChioCheckJsonOutput;
+  try { out = JSON.parse(result.stdout) as ChioCheckJsonOutput; }
+  catch { throw new CliError("chio check produced unparseable JSON", result.exitCode, result.stderr); }
   if (!out || typeof out !== "object" || Array.isArray(out)) {
     return { decision: "deny", reason: "chio check returned malformed output" };
   }
-  return normalizeVerdict(out);
+  const verdict = normalizeVerdict(out);
+  if (result.exitCode !== 0 && verdict.decision === "allow") {
+    return { decision: "deny", reason: "chio check exit status contradicts an allow verdict" };
+  }
+  return verdict;
 }
 
 async function mediateBudget(daemon: DaemonClient | undefined, options: CheckOptions, timeoutMs: number): Promise<Verdict> {
@@ -88,6 +114,9 @@ function normalizeVerdict(out: ChioCheckJsonOutput): Verdict {
     const lower = raw.toLowerCase();
     if (lower === "allow" || lower === "deny" || lower === "cancelled") {
       decision = lower;
+    } else if (lower === "pending_approval") {
+      decision = "deny";
+      reason ??= "approval pending; policy evaluation does not grant execution authority";
     } else {
       decision = "deny";
       reason ??= `unknown chio check decision "${raw}"`;

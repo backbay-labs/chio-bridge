@@ -79,19 +79,20 @@ fi
 cat > "\${out}" <<'EOF'
 {
   "schema": "arc.agent-passport.v1",
-  "subject": "did:chio:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+  "subject": "did:chio:abababababababababababababababababababababababababababababababab",
   "credentials": [{"unsigned": {}, "proof": {}}],
   "merkleRoots": [],
   "issuedAt": "2026-01-01T00:00:00Z",
   "validUntil": "2026-02-01T00:00:00Z"
 }
 EOF
-echo '{"subject":"did:chio:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789","credentialCount":1,"validUntil":"2026-02-01T00:00:00Z"}'
+echo '{"subject":"did:chio:abababababababababababababababababababababababababababababababab","credentialCount":1,"validUntil":"2026-02-01T00:00:00Z"}'
 `);
   const bridge = ChioBridge.fromCli({ chioBinary });
   const dummyDb = mkdtempSync(join(tmpdir(), "chio-fake-db-"));
   const p = await bridge.createPassport({
     receiptDbPath: join(dummyDb, "receipts.sqlite"),
+    subjectPublicKey: "ab".repeat(32),
   });
   assert.ok(p.did.startsWith("did:chio:"), `expected did:chio, got ${p.did}`);
   assert.equal(p.expiresAt, "2026-02-01T00:00:00Z");
@@ -121,8 +122,8 @@ echo '{"ok":true}'
   const bridge = ChioBridge.fromCli({ chioBinary });
   const dummyDb = mkdtempSync(join(tmpdir(), "chio-fake-db-"));
   await assert.rejects(
-    () => bridge.createPassport({ receiptDbPath: join(dummyDb, "receipts.sqlite") }),
-    /did:chio/,
+    () => bridge.createPassport({ receiptDbPath: join(dummyDb, "receipts.sqlite"), subjectPublicKey: "ab".repeat(32) }),
+    /explicit subjectPublicKey/,
   );
 });
 
