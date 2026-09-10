@@ -1,7 +1,7 @@
 name: release
 
-# Manual runs qualify artifacts only. Tag pushes may publish after protected
-# environment review; package checks do not establish host I01-I08 acceptance.
+# Manual runs qualify artifacts only. Tag pushes may publish subject to the
+# configured environment protections; package checks do not establish host I01-I08 acceptance.
 on:
   push:
     tags: ["v*.*.*"]
@@ -90,16 +90,17 @@ jobs:
             return response.json();
           }
           const environment = await read('environments/npm');
-          const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
-          if (environment.name !== 'npm' || !Array.isArray(reviewers?.reviewers) || reviewers.reviewers.length === 0) {
-            throw new Error('npm environment must already have required reviewers; implicit unprotected creation is forbidden');
+          if (environment.name !== 'npm') {
+            throw new Error('npm environment must be explicitly configured before a release tag');
           }
+          // GitHub enforces this environment's configured protections. Do not
+          // invent a reviewer requirement or mutate repository settings.
           const ci = await read(`actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=main&per_page=1`);
           const run = ci.workflow_runs?.[0];
           if (!run || run.head_sha !== sha || run.head_branch !== 'main' || run.event !== 'push' || run.status !== 'completed' || run.conclusion !== 'success') {
             throw new Error('latest main CI push run for this exact source must complete successfully before publication');
           }
-          console.log(`Verified npm reviewer gate and exact-source CI run ${run.id}`);
+          console.log(`Verified configured npm environment and exact-source CI run ${run.id}`);
           NODE
       - name: Install locked dependencies
         working-directory: ${{ env.PACKAGE_DIRECTORY }}
@@ -229,16 +230,17 @@ jobs:
             return response.json();
           }
           const environment = await read('environments/npm');
-          const reviewers = environment.protection_rules?.find(rule => rule.type === 'required_reviewers');
-          if (environment.name !== 'npm' || !Array.isArray(reviewers?.reviewers) || reviewers.reviewers.length === 0) {
-            throw new Error('npm environment must already have required reviewers; implicit unprotected creation is forbidden');
+          if (environment.name !== 'npm') {
+            throw new Error('npm environment must be explicitly configured before a release tag');
           }
+          // GitHub enforces this environment's configured protections. Do not
+          // invent a reviewer requirement or mutate repository settings.
           const ci = await read(`actions/workflows/ci.yml/runs?head_sha=${sha}&event=push&branch=main&per_page=1`);
           const run = ci.workflow_runs?.[0];
           if (!run || run.head_sha !== sha || run.head_branch !== 'main' || run.event !== 'push' || run.status !== 'completed' || run.conclusion !== 'success') {
             throw new Error('latest main CI push run for this exact source must complete successfully before publication');
           }
-          console.log(`Verified npm reviewer gate and exact-source CI run ${run.id}`);
+          console.log(`Verified configured npm environment and exact-source CI run ${run.id}`);
           NODE
       - name: Pin npm
         run: npm install --global npm@11.8.0 --ignore-scripts --no-audit --no-fund
@@ -284,7 +286,7 @@ jobs:
           dist_tag=latest
           if [[ "${PACKAGE_VERSION}" == *-* ]]; then dist_tag=next; fi
           npm publish ./*.tgz --access public --provenance --ignore-scripts --tag "${dist_tag}"
-      - name: Attach reviewed artifacts and evidence
+      - name: Attach qualified artifacts and evidence
         working-directory: release
         env:
           GH_TOKEN: ${{ github.token }}

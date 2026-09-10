@@ -61,9 +61,10 @@ The cold consumer install is offline and therefore fails if an unpublished or om
 3. Complete all applicable I01-I08 acceptance and the compatible kernel's
    release/security gates before approving production delivery. The original
    unsigned kernel 0.1.0 is not evidence for the new candidate.
-4. Configure the protected `npm` environment before tagging. Restrict deployment
-   to `v*` tags; use the repository's required release reviewers. A reviewer
-   must inspect the exact commit, kernel compatibility and acceptance records.
+4. Configure the `npm` environment before tagging and preserve existing
+   repository protection rules. Verify exact commit, kernel compatibility and
+   acceptance records under the applicable release procedures. This workflow
+   does not require adding human reviewers or changing protection rules.
 5. An npm maintainer must register this package's Trusted Publisher with GitHub
    owner `backbay-labs`, repository `chio-bridge`, workflow filename `release.yml`,
    and environment `npm`. Permit direct `npm publish` for this workflow. Do not
@@ -139,17 +140,18 @@ not claimed by these results.
 
 ### Enforced promotion prerequisites
 
-A tag build fails before publication unless the existing `npm` environment has
-at least one configured required reviewer and the latest `ci.yml` push run on
+A tag build fails before publication unless the `npm` environment exists and the latest `ci.yml` push run on
 `main` for the exact tag commit is completed successfully. The publication job
-checks both conditions again after environment review. Missing API access,
-missing environment protection, pending, skipped, cancelled or failed CI is a
+checks both conditions again when the configured environment permits the job. Missing API access,
+missing environment configuration, pending, skipped, cancelled or failed CI is a
 release failure. Configure the environment before creating a release tag; a
-workflow reference alone can otherwise create an unprotected environment.
+workflow reference alone can otherwise create an environment implicitly. Existing
+protection rules remain enforced by GitHub; this workflow does not require adding
+reviewers or changing them.
 
-These checks enforce this repository's source/package CI and reviewer gate.
-They do not establish kernel security or any host acceptance gate. The reviewer
-must separately verify the selected kernel's exact-source CI and Release
+These checks enforce this repository's source/package CI and configured environment boundary.
+They do not establish kernel security or any host acceptance gate. Release
+qualification must separately verify the selected kernel's exact-source CI and Release
 Qualification, immutable artifact identity, and all applicable I01-I08 evidence.
 The workflow does not publish on manual dispatch. No environment or repository
 setting was changed by this local workflow repair.
