@@ -93,7 +93,12 @@ async function main() {
     if(!response.ok)throw new Error("operator endpoint rejected the request");
     const value=await response.json() as any;
     if(value.dispatchPerformedByThisEndpoint!==false||value.record?.request_id!==requestId||value.record?.session_id!==config.execution.sessionId||value.record?.capability_id!==config.execution.capabilityId)throw new Error("operator record does not bind the retained proposal");
-    if(action==="approval-decide"&&!verifyApprovalToolCall(value.toolCallParams,{...config.execution,sessionId:config.execution.sessionId,tool:proposed.tool_name,arguments:proposed.arguments,requestId}))throw new Error("operator decision lacks a trusted exact-action signature");
+    if(action==="approval-decide"){
+      if(value.record?.id!==artifactOrId||value.toolCallParams?._meta?.chioGovernedIntent?.id!==artifactOrId)throw new Error("operator decision is for a different approval");
+      const verified=verifyApprovalToolCall(value.toolCallParams,{...config.execution,sessionId:config.execution.sessionId,tool:proposed.tool_name,arguments:proposed.arguments,requestId});
+      if(!verified)throw new Error("operator decision lacks a trusted exact-action signature");
+      if(verified.decision!==decision||value.status!==decision)throw new Error("operator decision does not match the requested decision");
+    }
     writeFileSync(descriptor,JSON.stringify(value,null,2)+"\n");fsyncSync(descriptor);syncDirectory(dirname(output));saved=true;
     process.stdout.write(JSON.stringify({output,status:value.status,approvalId:value.record.id,protectedDispatch:false})+"\n");
   } finally {closeSync(descriptor);if(!saved){unlinkSync(output);syncDirectory(dirname(output));}}
